@@ -1,41 +1,49 @@
-# Arch Linux Modular Installer
+# Arch Linux Installer with Whiptail GUI
 
-`install-arch.sh` is a single-file, modular installer meant to be run from the official Arch ISO. It auto-detects hardware (boot mode, CPU, GPU, memory, virtualization, candidate disks) and assembles a predictable install flow so you can focus on the few inputs that really matter. Pair it with `install-desktop.sh` once the base system is ready to add full desktops like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3 in one shot.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a whiptail-based graphical interface. It runs from the official Arch ISO and guides you through the installation process with interactive menus. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
 
-## What the script does
+## What the Installer Does
 
-1. Verifies root privileges, required tooling, and connectivity.
-2. Prints a hardware summary (boot mode, CPU + microcode, GPU driver suggestion, memory, disks).
-3. (Optional) Brings up Wi-Fi or Ethernet using `nmcli` when `NETWORK_BOOTSTRAP_ENABLE=true` so you can run the installer unattended.
-4. Picks the largest non-removable disk when `INSTALL_DISK` is unset and asks for a destructive confirmation.
-5. Partitions GPT with either an EFI system partition (UEFI installs) or a tiny BIOS boot stub (legacy installs) before carving the root volume, plus optional LVM layering and advanced layouts (Btrfs subvolumes or split LVM root/home LVs).
-6. Builds a base system with `pacstrap`, adding detected microcode/GPU drivers plus any extra packages you list.
-7. Applies localization, hostname, network, user, sudo settings, and injects the `lvm2` initramfs hook when needed.
-8. Creates a right-sized swapfile and fstab entry (with Btrfs-friendly swapfile prep when needed).
-9. Installs the bootloader you request: systemd-boot or GRUB on UEFI systems, GRUB (i386-pc) on BIOS/legacy, honoring `INSTALL_BOOT_MODE` and `INSTALL_BOOTLOADER` overrides.
-10. Optionally copies `install-desktop.sh` into the target, prompting via ncurses (`dialog`) when available (or plain text otherwise) to pick GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, i3, or none, then runs the desktop installer in the chroot when requested.
-11. Optionally stages and runs your own provisioning script inside the chroot (great for dotfiles, services, or additional automation).
-12. Prints a short post-install checklist.
+The installer uses whiptail to provide a friendly, graphical installation experience:
 
-Each logical step lives in its own function (`partition_disk`, `install_base_system`, `setup_bootloader`, etc.), making it easy to reorder or override pieces as your workflow evolves.
+1. **Welcome Screen** - Introduces the installer and its features
+2. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
+3. **Disk Selection** - Interactive menu to choose installation disk with confirmation
+4. **Filesystem Type** - Choose between ext4 (traditional) or Btrfs (modern with snapshots)
+5. **Partition Layout** - Select layout:
+   - Single partition (simple)
+   - LVM (flexible volume management)
+   - LVM with separate /home
+   - Btrfs subvolumes (@, @home, @var_log, etc.)
+6. **Disk Encryption** - Optional LUKS encryption with secure passphrase entry
+7. **System Settings** - Configure hostname, timezone, locale, and keyboard layout via menus
+8. **User Accounts** - Set up root and primary user with secure password prompts
+9. **Desktop Environment** - Choose from 10 desktop options or minimal install
+10. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
+11. **Installation Summary** - Review all settings before proceeding
+12. **Automated Installation** - Progress bar shows installation stages
+13. **Completion** - Success message with next steps
+
+All user interaction happens through whiptail menus, making the installation process intuitive and reducing errors.
 
 ## Usage
 
-1. Boot into the Arch ISO and ensure networking is up (`iwctl`, `nmcli`, or Ethernet).
-2. Copy the script onto the live system (USB, `scp`, `curl`, etc.) and make it executable:
+1. Boot into the Arch ISO and ensure networking is up. The installer will check connectivity automatically.
+
+2. Download or copy the installer scripts onto the live system:
 
    ```bash
-   chmod +x install-arch.sh
+   # Example: download directly
+   curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/install-arch.sh
+   curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/install-desktop.sh
+   
+   # Or use scp, USB, etc.
    ```
 
-   Keep `install-desktop.sh` in the same directory (or set `INSTALL_DESKTOP_SCRIPT` to its path) if you want the installer to offer desktop bootstrapping right away.
-
-3. (Optional) Export any overrides before running. Example:
+3. Make the script executable:
    
    ```bash
-   export INSTALL_HOSTNAME=atlas \
-          INSTALL_USER=neo \
-          INSTALL_PACKAGES="nano vim git htop"
+   chmod +x install-arch.sh
    ```
 
 4. Run the installer:
@@ -44,111 +52,122 @@ Each logical step lives in its own function (`partition_disk`, `install_base_sys
    ./install-arch.sh
    ```
 
-5. Review the hardware summary and type `YES` when prompted to wipe the chosen disk.
-6. When prompted, pick a desktop to install (or type `none`).
-7. Wait for the script to finish, then `reboot`.
+5. Follow the whiptail GUI prompts:
+   - Select your installation disk
+   - Choose filesystem and layout options
+   - Configure encryption if desired
+   - Set system settings (hostname, timezone, locale)
+   - Create user accounts
+   - Select desktop environment
+   - Choose optional software bundles
 
-## Storage profiles
+6. Review the installation summary and confirm
 
-- **ext4 (default):** simple root partition on bare metal. Leave `INSTALL_FILESYSTEM` unset.
-- **Btrfs:** export `INSTALL_FILESYSTEM=btrfs` to format the root as Btrfs and mount it with `BTRFS_MOUNT_OPTS` (defaults to `compress=zstd,autodefrag`). The swapfile helper automatically disables CoW.
-- **LVM:** export `INSTALL_USE_LVM=true` to convert the root partition into an LVM PV + VG/LV (`INSTALL_VG_NAME`/`INSTALL_LV_ROOT_NAME`). Combine with either filesystem choice above (e.g., Btrfs on an LV).
-- **Layout presets:** set `INSTALL_LAYOUT=single` (default) for a monolithic root, `INSTALL_LAYOUT=btrfs-subvols` to auto-create the `BTRFS_SUBVOLUMES` map (e.g., `@:/`, `@home:/home`, ...), or `INSTALL_LAYOUT=lvm-home` to carve separate root/home LVs sized via `INSTALL_LV_ROOT_SIZE` and `INSTALL_LV_HOME_SIZE`.
+7. Wait for the automated installation to complete
 
-## Boot mode selection
+8. Reboot into your new Arch Linux system!
 
-By default the installer inspects `/sys/firmware/efi` to decide whether to treat the machine as UEFI or BIOS. Set `INSTALL_BOOT_MODE=uefi`, `INSTALL_BOOT_MODE=bios` (alias: `legacy`), or leave it at `auto` to accept the detection result. Pair it with `INSTALL_BOOTLOADER` to explicitly request `systemd-boot` or `grub` (`auto` chooses the sensible default for the selected mode).
+The installer is fully interactive through whiptail menus - no manual configuration needed.
 
-- **UEFI:** the script creates a 512 MiB FAT32 EFI system partition, mounts it at `/boot`, and installs your chosen bootloader. The default (`INSTALL_BOOTLOADER=auto`) resolves to systemd-boot, but you can set `INSTALL_BOOTLOADER=grub` to install `grub-install --target=x86_64-efi` instead. Forcing `INSTALL_BOOT_MODE=uefi` while booted in legacy mode is blocked since UEFI tooling needs firmware support.
-- **BIOS/Legacy:** a 1 MiB BIOS boot partition (type `bios_grub`) is created so GRUB can embed its core image on GPT disks, while `/boot` simply lives on the root filesystem. GRUB is the only supported bootloader in this mode, so `INSTALL_BOOTLOADER` must be `auto` or `grub`. Use this when installing on older machines or when you want to force a legacy GRUB install even if the firmware currently exposes UEFI. Make sure the target hardware actually supports legacy boot before setting this.
+## Interactive GUI Features
 
-## Post-install provisioning
+The whiptail-based interface provides:
 
-Set `INSTALL_POST_SCRIPT` to a shell script on the live system (absolute path or relative to the installer directory) to have it copied into the new installation and executed via `arch-chroot /mnt`. Provide additional arguments with `INSTALL_POST_SCRIPT_ARGS="arg1 arg2"`. The script runs after optional desktop installation, so you can use it for dotfiles, service enablement, language runtime installs, etc. If the file cannot be found, the installer logs an error but continues.
+- **Menu Navigation**: Arrow keys to select, Enter to confirm, Esc to cancel
+- **Input Boxes**: Text entry for hostnames, usernames, etc.
+- **Password Boxes**: Secure password entry (hidden characters)
+- **Yes/No Dialogs**: Clear confirmation prompts
+- **Checklists**: Multi-select for software bundles
+- **Progress Gauge**: Real-time installation progress
+- **Message Boxes**: Information and error displays
 
-For reusable “bundles”, drop one or more shell scripts into a directory (default `bundles/` next to `install-arch.sh`) and either set `INSTALL_BUNDLE_CHOICE` to the bundle’s filename (or number) or enable `INSTALL_BUNDLE_PROMPT=true` to be asked during the run. Selecting a bundle automatically wires its script into the post-install hook, and you can feed it arguments via `INSTALL_BUNDLE_ARGS` (falls back to `INSTALL_POST_SCRIPT_ARGS` when already set).
+All menus use the whiptail TUI (Text User Interface) which works in any terminal and is included in the Arch ISO by default.
 
-Starter bundles included in this repo:
+## Storage Options
 
-- `dev.sh` – toolchains, editors, language runtimes, Docker/Podman.
-- `desktop-utilities.sh` – browsers, media players, office suite, printing.
-- `gaming.sh` – Steam, Lutris, Wine, Gamemode, MangoHUD.
-- `server.sh` – SSH hardening, firewall, cockpit, node exporter.
-- `cloud.sh` – kubectl/helm/terraform plus major cloud CLIs.
-- `creative.sh` – graphics/audio/video production apps.
+The installer provides interactive whiptail menus for all storage configuration:
 
-## Interactive menus (ncurses)
+### Filesystem Types
+- **ext4**: Traditional, stable Linux filesystem (recommended for most users)
+- **Btrfs**: Modern copy-on-write filesystem with snapshot support and compression
 
-The installer can show ncurses menus via `dialog` for desktop selection and bundle prompts. Set `INSTALL_TUI_MODE=auto` (default) to use `dialog` when present, `INSTALL_TUI_MODE=dialog` to require it (install with `pacman -Sy dialog` inside the live ISO), or `INSTALL_TUI_MODE=text` to force simple `read -p` prompts.
+### Partition Layouts
+- **Single Partition**: Simple root partition only - easiest option
+- **LVM**: Logical Volume Management for flexible storage management
+- **LVM with /home**: Separate root and home logical volumes
+- **Btrfs Subvolumes**: Automatic creation of @ (root), @home, @var_log, @var_cache, @snapshots
 
-## Network bootstrapping
+### Disk Encryption
+- Optional LUKS encryption for root partition
+- Secure passphrase entry through whiptail password boxes
+- Confirmation prompt to prevent typos
 
-Set `NETWORK_BOOTSTRAP_ENABLE=true` when running from the ISO if you want the script to bring the link up via `nmcli` before it checks connectivity. Supported profiles:
+### Boot Modes
+- Automatic detection of UEFI or BIOS/Legacy mode
+- **UEFI**: 512 MB EFI partition, defaults to systemd-boot
+- **BIOS**: 1 MB BIOS boot partition, uses GRUB
 
-- **Wi-Fi (`NETWORK_TYPE=wifi`):** provide `NETWORK_WIFI_SSID` and `NETWORK_WIFI_PSK`, plus `NETWORK_INTERFACE` if you need to pin a specific adapter.
-- **Ethernet DHCP (`NETWORK_TYPE=ethernet`):** optionally set `NETWORK_INTERFACE` to force a port; otherwise the script simply ensures NetworkManager is running.
-- **Static IPv4 (`NETWORK_TYPE=static`):** set `NETWORK_INTERFACE`, `NETWORK_STATIC_IP` (CIDR), `NETWORK_STATIC_GATEWAY`, and optionally override `NETWORK_STATIC_DNS`.
+## Desktop Environments
 
-Leave `NETWORK_BOOTSTRAP_ENABLE=false` when you prefer to configure networking manually (iwctl, ip, etc.).
+Select from popular desktop environments during installation:
 
-## Customization knobs
+- **GNOME** - Modern, feature-rich desktop with GDM
+- **KDE Plasma** - Customizable and powerful with SDDM
+- **XFCE** - Lightweight and fast with LightDM
+- **Cinnamon** - Traditional desktop experience with LightDM
+- **MATE** - Classic GNOME 2 desktop with LightDM
+- **Budgie** - Clean and elegant with GDM
+- **LXQt** - Lightweight Qt desktop with SDDM
+- **Sway** - Tiling Wayland compositor with greetd
+- **i3** - Tiling window manager with LightDM
+- **None** - Minimal install (server/headless)
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `INSTALL_DISK` | Target disk (e.g. `/dev/nvme0n1`). Leave empty for auto-selection. | *largest disk* |
-| `INSTALL_HOSTNAME` | Hostname + `/etc/hosts` entry. | `archlinux` |
-| `INSTALL_TIMEZONE` | Timezone for `/etc/localtime`. | `UTC` |
-| `INSTALL_LOCALE` | Locale enabled in `locale.gen`. | `en_US.UTF-8` |
-| `INSTALL_KEYMAP` | Console keymap. | `us` |
-| `INSTALL_ROOT_PASSWORD` | Sets root password via `chpasswd`. | `changeme` |
-| `INSTALL_USER` / `INSTALL_USER_PASSWORD` | Creates a wheel user with sudo. | `archer` / `changeme` |
-| `INSTALL_PACKAGES` | Space-separated extra packages. | `nano vim git networkmanager` |
-| `INSTALL_FILESYSTEM` | `ext4` or `btrfs` root filesystem. | `ext4` |
-| `INSTALL_BOOT_MODE` | Bootloader target: `auto`, `uefi`, or `bios` (legacy GRUB). | `auto` |
-| `INSTALL_BOOTLOADER` | Preferred bootloader: `auto`, `systemd-boot`, or `grub`. | `auto` |
-| `BTRFS_MOUNT_OPTS` | Mount options when using Btrfs. | `compress=zstd,autodefrag` |
-| `INSTALL_USE_LVM` | `true` to build an LVM stack for root. | `false` |
-| `INSTALL_VG_NAME` / `INSTALL_LV_ROOT_NAME` | VG/LV identifiers when LVM is enabled. | `archvg` / `root` |
-| `INSTALL_LAYOUT` | `single`, `btrfs-subvols`, or `lvm-home` presets. | `single` |
-| `BTRFS_SUBVOLUMES` | Space-delimited `subvol:mountpoint` pairs for the subvol preset. | `@:/ @home:/home …` |
-| `INSTALL_LV_HOME_NAME` | LV name for `/home` when using `lvm-home`. | `home` |
-| `INSTALL_LV_ROOT_SIZE` / `INSTALL_LV_HOME_SIZE` | Sizing strings for split LVs (e.g., `70%FREE`, `40G`). | `70%FREE` / `100%FREE` |
-| `NETWORK_BOOTSTRAP_ENABLE` | `true` to let the installer run `nmcli` before `ping` checks. | `false` |
-| `NETWORK_TYPE` | `wifi`, `ethernet`, or `static` when bootstrapping. | `wifi` |
-| `NETWORK_INTERFACE` | Optional interface hint (e.g., `wlan0`, `enp0s25`). | *empty* |
-| `NETWORK_WIFI_SSID` / `NETWORK_WIFI_PSK` | Credentials for Wi-Fi bootstrap. | *empty* |
-| `NETWORK_STATIC_IP` / `NETWORK_STATIC_GATEWAY` | CIDR IP and gateway for static mode. | *empty* |
-| `NETWORK_STATIC_DNS` | DNS servers for static mode. | `8.8.8.8` |
-| `INSTALL_DESKTOP_PROMPT` | `true` to ask which desktop to install at the end. | `true` |
-| `INSTALL_DESKTOP_CHOICE` | Preselect `gnome`, `kde`, `xfce`, `sway`, or `none` (skip prompt). | *empty* |
-| `INSTALL_DESKTOP_SCRIPT` | Path to the desktop helper script the installer should run. | `install-desktop.sh` |
-| `INSTALL_DESKTOP_EXTRAS` | Extra packages passed to `install-desktop.sh`. | *empty* |
-| `INSTALL_TUI_MODE` | Interaction style for prompts: `auto`, `dialog`, or `text`. | `auto` |
-| `INSTALL_POST_SCRIPT` | Path to a post-install provisioning script executed inside the chroot. | *empty* |
-| `INSTALL_POST_SCRIPT_ARGS` | Arguments passed to the provisioning script. | *empty* |
-| `INSTALL_BUNDLE_DIR` | Directory scanned for bundle scripts when selecting post-install automation. | `bundles` |
-| `INSTALL_BUNDLE_PROMPT` | `true` to ask which bundle to run (if `INSTALL_POST_SCRIPT` is unset). | `false` |
-| `INSTALL_BUNDLE_CHOICE` | Preselect bundle by name or number (from the prompt listing). | *empty* |
-| `INSTALL_BUNDLE_ARGS` | Arguments supplied to the chosen bundle when `INSTALL_POST_SCRIPT_ARGS` is empty. | *empty* |
+The `install-desktop.sh` script can also be run post-installation to add a desktop environment later.
 
-Adjust the functions in `install-arch.sh` if you need LVM, Btrfs, custom partitioning, or different bootloader behavior—the script is structured so each concern stays isolated.
+## Software Bundles
 
-## Desktop add-on script
+Optional post-install bundles available:
 
-If `install-desktop.sh` sits next to `install-arch.sh` (or you point `INSTALL_DESKTOP_SCRIPT` at it), the installer will ask whether to run it immediately and copy it into the chroot for you. Select `none` to skip or set `INSTALL_DESKTOP_PROMPT=false` / `INSTALL_DESKTOP_CHOICE=none` to keep things headless.
+- **dev.sh** - Developer tools (compilers, Docker, Podman, Git, language runtimes)
+- **gaming.sh** - Gaming setup (Steam, Lutris, Wine, Gamemode, MangoHUD)
+- **server.sh** - Server tools (SSH hardening, firewall, monitoring)
+- **cloud.sh** - Cloud tools (kubectl, Helm, Terraform, cloud CLIs)
+- **creative.sh** - Creative applications (GIMP, Blender, Kdenlive, Inkscape)
+- **desktop-utilities.sh** - Desktop utilities (browsers, office suite, media players)
 
-After rebooting into the installed system, you can rerun `install-desktop.sh` manually whenever you like to pull in a desktop environment + display manager combo. Examples:
+Bundles can be selected via whiptail checklist during installation or run manually afterward.
 
-```bash
-chmod +x install-desktop.sh
-DESKTOP_ENV=gnome ./install-desktop.sh             # GNOME + GDM
-DESKTOP_ENV=kde DESKTOP_EXTRAS="firefox flatpak" ./install-desktop.sh
-```
+## Safety Notes
 
-Supported values for `DESKTOP_ENV` today: `gnome`, `kde` (Plasma), `xfce`, `cinnamon`, `mate`, `budgie`, `lxqt`, `sway` (Wayland + greetd), and `i3`. Add extra packages via `DESKTOP_EXTRAS` or tweak `PACMAN_FLAGS` if you prefer to confirm each install.
+- The installer **completely erases** the selected disk - double-check your selection!
+- All sensitive operations (disk erase, encryption setup) require explicit confirmation
+- Passwords are entered through secure whiptail password boxes (hidden input)
+- Hardware detection runs automatically to select appropriate drivers and microcode
+- The installer validates network connectivity before proceeding
+- Progress is shown in real-time with a progress gauge
 
-## Safety notes
+## Requirements
 
-- The script **wipes** the chosen disk. Double-check the `lsblk` output and confirmation prompt before typing `YES`.
-- Swapfile creation only prepares the file and fstab entry; it is not activated inside the live ISO to keep cleanup simple.
-- Always rotate the default passwords immediately after the first boot.
+The installer requires:
+- Arch Linux ISO (booted in live environment)
+- Network connectivity (checked automatically)
+- `whiptail` (included in Arch ISO by default)
+- Root privileges
+
+All other required tools are checked automatically at startup.
+
+## Technical Details
+
+- Written in Bash with strict error handling (`set -euo pipefail`)
+- Modular design with separate functions for each installation stage
+- Automatic hardware detection (CPU vendor, GPU, memory, virtualization)
+- Supports both UEFI and BIOS/Legacy boot modes
+- Intelligent bootloader selection (systemd-boot for UEFI, GRUB for BIOS)
+- Automatic microcode installation (Intel or AMD)
+- Smart swap size calculation based on available RAM
+- Proper LUKS/LVM integration when encryption or LVM is enabled
+- Btrfs-aware swapfile creation (disables CoW)
+
+## License
+
+This project is provided as-is for the Arch Linux community. Use at your own risk.
