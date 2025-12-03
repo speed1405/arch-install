@@ -543,12 +543,11 @@ select_bundles() {
     
     if [[ -n $selected ]]; then
         # Parse all selected bundles (whiptail returns space-separated quoted items)
+        # Safer parsing without eval - remove quotes and split by space
         INSTALL_BUNDLE_CHOICES=()
-        # Use eval to properly handle quoted strings
-        eval "set -- $selected"
-        for bundle in "$@"; do
-            INSTALL_BUNDLE_CHOICES+=("$bundle")
-        done
+        while IFS= read -r bundle; do
+            [[ -n $bundle ]] && INSTALL_BUNDLE_CHOICES+=("$bundle")
+        done < <(echo "$selected" | tr -d '"' | tr ' ' '\n')
     fi
 }
 
@@ -978,10 +977,11 @@ run_bundles() {
 }
 
 cleanup() {
-    # Only cleanup if we're exiting with an error (not normal completion)
-    # Normal completion handles cleanup explicitly
+    # This cleanup runs on EXIT trap (errors, interrupts, etc.)
+    # Successful installation already cleaned up explicitly and set MOUNTED=false
+    # So if MOUNTED is still true here, something went wrong
     if [[ $MOUNTED == true ]]; then
-        log_error "Installation failed - cleaning up..."
+        log_error "Installation failed or interrupted - cleaning up..."
         umount -R /mnt 2>/dev/null || true
     fi
     if is_true "$INSTALL_USE_LVM"; then
