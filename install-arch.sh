@@ -526,23 +526,41 @@ select_bundles() {
     local bundles=()
     
     # Check for available bundle scripts
+    # Core/Essential bundles first
+    if [[ -f "${bundle_dir}/aur-helper.sh" ]]; then
+        bundles+=("aur-helper" "AUR helper (yay/paru for AUR access)" OFF)
+    fi
+    if [[ -f "${bundle_dir}/optimization.sh" ]]; then
+        bundles+=("optimization" "System optimization (zram, pacman, performance)" OFF)
+    fi
+    if [[ -f "${bundle_dir}/security.sh" ]]; then
+        bundles+=("security" "Security hardening (firewall, antivirus, AppArmor)" OFF)
+    fi
+    if [[ -f "${bundle_dir}/sysadmin.sh" ]]; then
+        bundles+=("sysadmin" "System admin tools (monitoring, backups, maintenance)" OFF)
+    fi
+    if [[ -f "${bundle_dir}/networking.sh" ]]; then
+        bundles+=("networking" "Network tools (Wireshark, nmap, monitoring)" OFF)
+    fi
+    # Desktop/Application bundles
+    if [[ -f "${bundle_dir}/desktop-utilities.sh" ]]; then
+        bundles+=("desktop-utilities" "Desktop utilities (browsers, office)" OFF)
+    fi
     if [[ -f "${bundle_dir}/dev.sh" ]]; then
         bundles+=("dev" "Developer tools (compilers, Docker, etc.)" OFF)
     fi
     if [[ -f "${bundle_dir}/gaming.sh" ]]; then
         bundles+=("gaming" "Gaming setup (Steam, Lutris, Wine)" OFF)
     fi
+    if [[ -f "${bundle_dir}/creative.sh" ]]; then
+        bundles+=("creative" "Creative apps (GIMP, Blender)" OFF)
+    fi
+    # Server/Cloud bundles
     if [[ -f "${bundle_dir}/server.sh" ]]; then
         bundles+=("server" "Server tools (SSH, firewall)" OFF)
     fi
     if [[ -f "${bundle_dir}/cloud.sh" ]]; then
         bundles+=("cloud" "Cloud tools (kubectl, terraform)" OFF)
-    fi
-    if [[ -f "${bundle_dir}/creative.sh" ]]; then
-        bundles+=("creative" "Creative apps (GIMP, Blender)" OFF)
-    fi
-    if [[ -f "${bundle_dir}/desktop-utilities.sh" ]]; then
-        bundles+=("desktop-utilities" "Desktop utilities (browsers, office)" OFF)
     fi
     
     if [[ ${#bundles[@]} -eq 0 ]]; then

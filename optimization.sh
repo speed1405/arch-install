@@ -111,7 +111,15 @@ systemctl restart systemd-journald
 log_info "Journal size limited to 500MB"
 
 # Install power management tools for laptops
-if [[ -d /sys/class/power_supply/BAT* ]] || [[ -d /sys/class/power_supply/battery ]]; then
+has_battery=false
+for battery_path in /sys/class/power_supply/BAT* /sys/class/power_supply/battery; do
+  if [[ -d "$battery_path" ]]; then
+    has_battery=true
+    break
+  fi
+done
+
+if [[ "$has_battery" == "true" ]]; then
   log_step "Laptop battery detected, installing TLP"
   install_pkgs tlp tlp-rdw
   systemctl enable tlp.service
