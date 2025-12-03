@@ -113,12 +113,6 @@ net.core.bpf_jit_harden = 2
 # Disable kexec (prevents replacing running kernel)
 kernel.kexec_load_disabled = 1
 
-# Restrict access to kernel logs
-kernel.dmesg_restrict = 1
-
-# Hide kernel pointers
-kernel.kptr_restrict = 2
-
 # Restrict ptrace to only parent processes
 kernel.yama.ptrace_scope = 1
 EOF
@@ -132,8 +126,11 @@ if pacman -Q openssh &>/dev/null; then
     # Backup original config
     cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
     
+    # Ensure sshd_config.d directory exists
+    mkdir -p /etc/ssh/sshd_config.d
+    
     # Apply hardening settings
-    cat >> /etc/ssh/sshd_config.d/99-hardening.conf <<EOF
+    cat > /etc/ssh/sshd_config.d/99-hardening.conf <<EOF
 # Security hardening
 PermitRootLogin no
 PasswordAuthentication yes
@@ -226,7 +223,6 @@ chmod +x /usr/local/bin/security-check
 log_info "Created /usr/local/bin/security-check script"
 
 log_step "Security hardening complete"
-log_info ""
 log_info "Next steps:"
 log_info "  1. Review firewall rules: ufw status"
 log_info "  2. Set up SSH keys and disable password auth"
@@ -236,6 +232,5 @@ log_info "  5. Check for rootkits: rkhunter --check"
 log_info "  6. Review AppArmor status: aa-status"
 log_info "  7. Monitor USB devices: usbguard list-devices"
 log_info "  8. Check for CVEs: arch-audit"
-log_info ""
 log_info "Important: Test your system to ensure services work correctly"
 log_info "Some restrictions may break functionality - adjust as needed"

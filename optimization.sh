@@ -47,7 +47,9 @@ fi
 log_step "Configuring system performance"
 
 # Adjust swappiness for better performance
-if ! grep -q "vm.swappiness" /etc/sysctl.d/99-swappiness.conf 2>/dev/null; then
+if [[ -f /etc/sysctl.d/99-swappiness.conf ]] && grep -q "vm.swappiness" /etc/sysctl.d/99-swappiness.conf; then
+  log_info "Swappiness already configured"
+else
   log_info "Setting swappiness to 10 (prefer RAM over swap)"
   mkdir -p /etc/sysctl.d
   echo "vm.swappiness=10" > /etc/sysctl.d/99-swappiness.conf
