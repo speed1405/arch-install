@@ -129,6 +129,7 @@ The `install-desktop.sh` script can also be run post-installation to add a deskt
 
 Optional post-install bundles available:
 
+### Core Bundles
 - **dev.sh** - Developer tools (compilers, Docker, Podman, Git, language runtimes)
 - **gaming.sh** - Gaming setup (Steam, Lutris, Wine, Gamemode, MangoHUD)
 - **server.sh** - Server tools (SSH hardening, firewall, monitoring)
@@ -136,7 +137,14 @@ Optional post-install bundles available:
 - **creative.sh** - Creative applications (GIMP, Blender, Kdenlive, Inkscape)
 - **desktop-utilities.sh** - Desktop utilities (browsers, office suite, media players)
 
-Bundles can be selected via whiptail checklist during installation or run manually afterward.
+### Additional Bundles
+- **aur-helper.sh** - AUR helper installation (yay or paru) for accessing Arch User Repository
+- **optimization.sh** - System optimization (pacman config, zram, SSD TRIM, performance tuning)
+- **security.sh** - Security hardening (firewall, ClamAV, AppArmor, kernel hardening, SSH hardening)
+- **networking.sh** - Network tools (Wireshark, nmap, mtr, iftop, NetworkManager)
+- **sysadmin.sh** - System administration (monitoring, backup tools, disk utilities, maintenance scripts)
+
+Bundles can be selected via whiptail checklist during installation or run manually afterward. See **FEATURE-SUGGESTIONS.md** for even more enhancement ideas.
 
 ## Safety Notes
 
