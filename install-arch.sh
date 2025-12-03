@@ -839,11 +839,11 @@ EOF
     # Initramfs hooks
     local need_mkinit=false
     if is_true "$INSTALL_USE_LUKS"; then
-        arch-chroot /mnt sed -i 's/filesystems/encrypt filesystems/' /etc/mkinitcpio.conf
+        arch-chroot /mnt sed -i '/^HOOKS=/ s/\(block \)/\1encrypt /' /etc/mkinitcpio.conf
         need_mkinit=true
     fi
     if is_true "$INSTALL_USE_LVM"; then
-        arch-chroot /mnt sed -i 's/filesystems/lvm2 filesystems/' /etc/mkinitcpio.conf
+        arch-chroot /mnt sed -i '/^HOOKS=/ s/\(filesystems\)/lvm2 \1/' /etc/mkinitcpio.conf
         need_mkinit=true
     fi
     [[ $need_mkinit == true ]] && arch-chroot /mnt mkinitcpio -P >/dev/null 2>&1
@@ -902,7 +902,8 @@ EOF
             # GRUB on UEFI
             if is_true "$INSTALL_USE_LUKS"; then
                 arch-chroot /mnt sed -i 's/^#\?GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' /etc/default/grub
-                arch-chroot /mnt sed -i "/^GRUB_CMDLINE_LINUX=/ s/\"$/ cryptdevice=UUID=${CRYPT_UUID}:${INSTALL_LUKS_NAME}\"/" /etc/default/grub
+                # Add cryptdevice parameter, handling both empty and existing parameters
+                arch-chroot /mnt sed -i "/^GRUB_CMDLINE_LINUX=/ s/=\"/=\"cryptdevice=UUID=${CRYPT_UUID}:${INSTALL_LUKS_NAME} /" /etc/default/grub
             fi
             arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=ArchLinux
             arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
@@ -911,7 +912,8 @@ EOF
         # GRUB on BIOS
         if is_true "$INSTALL_USE_LUKS"; then
             arch-chroot /mnt sed -i 's/^#\?GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' /etc/default/grub
-            arch-chroot /mnt sed -i "/^GRUB_CMDLINE_LINUX=/ s/\"$/ cryptdevice=UUID=${CRYPT_UUID}:${INSTALL_LUKS_NAME}\"/" /etc/default/grub
+            # Add cryptdevice parameter, handling both empty and existing parameters
+            arch-chroot /mnt sed -i "/^GRUB_CMDLINE_LINUX=/ s/=\"/=\"cryptdevice=UUID=${CRYPT_UUID}:${INSTALL_LUKS_NAME} /" /etc/default/grub
         fi
         arch-chroot /mnt grub-install --target=i386-pc "${INSTALL_DISK}"
         arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
