@@ -18,11 +18,12 @@ The installer uses whiptail to provide a friendly, graphical installation experi
 6. **Disk Encryption** - Optional LUKS encryption with secure passphrase entry
 7. **System Settings** - Configure hostname, timezone, locale, and keyboard layout via menus
 8. **User Accounts** - Set up root and primary user with secure password prompts
-9. **Desktop Environment** - Choose from 10 desktop options or minimal install
-10. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
-11. **Installation Summary** - Review all settings before proceeding
-12. **Automated Installation** - Progress bar shows installation stages
-13. **Completion** - Success message with next steps
+9. **Mirror Selection** - Choose package mirror region for faster downloads (Worldwide, US, Europe, Asia, etc.)
+10. **Desktop Environment** - Choose from 10 desktop options or minimal install
+11. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
+12. **Installation Summary** - Review all settings before proceeding
+13. **Automated Installation** - Progress bar shows installation stages
+14. **Completion** - Success message with next steps
 
 All user interaction happens through whiptail menus, making the installation process intuitive and reducing errors.
 
