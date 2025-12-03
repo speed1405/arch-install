@@ -869,10 +869,10 @@ update_mirrorlist() {
             cp /etc/pacman.d/mirrorlist.backup /etc/pacman.d/mirrorlist
         }
     else
-        # Fallback: use rankmirrors or simple filtering based on region
+        # Fallback: use simple awk-based filtering by region
         log_info "Reflector not available, using basic mirror filtering"
         
-        # Extract mirrors for the selected region using grep
+        # Extract mirrors for the selected region
         local search_term
         case "$INSTALL_MIRROR_REGION" in
             "United States") search_term="United States" ;;
@@ -891,7 +891,7 @@ update_mirrorlist() {
                 ;;
         esac
         
-        # Uncomment mirrors matching the region
+        # Uncomment mirrors matching the region (using index for safe substring search)
         if [[ -n $search_term ]]; then
             awk -v region="$search_term" '
                 BEGIN { in_region=0 }
