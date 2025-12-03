@@ -792,7 +792,8 @@ install_base_system() {
     
     packages+=(nano vim git sudo)
     
-    pacstrap -K /mnt "${packages[@]}" >/dev/null 2>&1
+    # Show pacstrap output for visibility
+    pacstrap -K /mnt "${packages[@]}"
 }
 
 generate_fstab() {
@@ -955,7 +956,10 @@ run_bundle() {
 }
 
 cleanup() {
+    # Only cleanup if we're exiting with an error (not normal completion)
+    # Normal completion handles cleanup explicitly
     if [[ $MOUNTED == true ]]; then
+        log_error "Installation failed - cleaning up..."
         umount -R /mnt 2>/dev/null || true
     fi
     if is_true "$INSTALL_USE_LVM"; then
@@ -1006,68 +1010,68 @@ main() {
     
     trap cleanup EXIT
     
-    # Installation progress
-    {
-        echo "0"
-        echo "# Partitioning disk..."
-        partition_disk "$TARGET_DISK"
-        
-        echo "5"
-        echo "# Formatting boot partition..."
-        format_boot_partition
-        
-        echo "10"
-        echo "# Setting up encryption..."
-        setup_luks_container
-        
-        echo "15"
-        echo "# Configuring storage..."
-        setup_storage_stack
-        
-        echo "20"
-        echo "# Formatting filesystems..."
-        format_filesystems
-        
-        echo "25"
-        echo "# Preparing Btrfs subvolumes..."
-        prepare_btrfs_subvolumes
-        
-        echo "30"
-        echo "# Mounting filesystems..."
-        mount_filesystems
-        
-        echo "35"
-        echo "# Installing base system (this may take a while)..."
-        install_base_system
-        
-        echo "60"
-        echo "# Generating fstab..."
-        generate_fstab
-        
-        echo "65"
-        echo "# Configuring system..."
-        configure_system
-        
-        echo "75"
-        echo "# Creating swapfile..."
-        setup_swapfile
-        
-        echo "80"
-        echo "# Installing bootloader..."
-        setup_bootloader
-        
-        echo "85"
-        echo "# Installing desktop environment..."
-        install_desktop
-        
-        echo "95"
-        echo "# Running post-install bundle..."
-        run_bundle
-        
-        echo "100"
-        echo "# Installation complete!"
-        sleep 2
-    } | wt_gauge "Installing Arch Linux" "Please wait while the installation completes..." 8 70
+    # Installation progress - show on console
+    log_step "Starting installation process..."
+    
+    echo "0" ; echo "# Partitioning disk..."
+    partition_disk "$TARGET_DISK"
+    
+    echo "5" ; echo "# Formatting boot partition..."
+    format_boot_partition
+    
+    echo "10" ; echo "# Setting up encryption..."
+    setup_luks_container
+    
+    echo "15" ; echo "# Configuring storage..."
+    setup_storage_stack
+    
+    echo "20" ; echo "# Formatting filesystems..."
+    format_filesystems
+    
+    echo "25" ; echo "# Preparing Btrfs subvolumes..."
+    prepare_btrfs_subvolumes
+    
+    echo "30" ; echo "# Mounting filesystems..."
+    mount_filesystems
+    
+    echo "35" ; echo "# Installing base system (this will take several minutes)..."
+    install_base_system
+    
+    echo "60" ; echo "# Generating fstab..."
+    generate_fstab
+    
+    echo "65" ; echo "# Configuring system..."
+    configure_system
+    
+    echo "75" ; echo "# Creating swapfile..."
+    setup_swapfile
+    
+    echo "80" ; echo "# Installing bootloader..."
+    setup_bootloader
+    
+    echo "85" ; echo "# Installing desktop environment..."
+    install_desktop
+    
+    echo "95" ; echo "# Running post-install bundle..."
+    run_bundle
+    
+    echo "100" ; echo "# Installation complete!"
+    
+    log_step "Installation completed successfully!"
+    
+    # Cleanup before showing completion message
+    log_step "Unmounting filesystems..."
+    if [[ $MOUNTED == true ]]; then
+        umount -R /mnt 2>/dev/null || true
+        MOUNTED=false
+    fi
+    if is_true "$INSTALL_USE_LVM"; then
+        vgchange -an "$INSTALL_VG_NAME" >/dev/null 2>&1 || true
+    fi
+    if [[ $OPENED_LUKS == true ]]; then
+        cryptsetup close "$CRYPT_DEVICE_NAME" >/dev/null 2>&1 || true
+        OPENED_LUKS=false
+    fi
     
     # Success message
     local success_msg="Installation completed successfully!\n\n"
@@ -1075,13 +1079,19 @@ main() {
     success_msg+="• Hostname: ${INSTALL_HOSTNAME}\n"
     success_msg+="• User: ${INSTALL_USER}\n"
     success_msg+="• Desktop: ${INSTALL_DESKTOP_CHOICE}\n\n"
-    success_msg+="Next steps:\n"
-    success_msg+="1. Review the installation\n"
-    success_msg+="2. Unmount: umount -R /mnt\n"
-    success_msg+="3. Reboot: reboot\n\n"
-    success_msg+="Remove the installation media and boot into your new Arch Linux system!"
+    success_msg+="The system is ready to boot.\n"
+    success_msg+="Remove the installation media before rebooting."
     
-    wt_msgbox "Installation Complete" "$success_msg" 20 75
+    wt_msgbox "Installation Complete" "$success_msg" 18 75
+    
+    # Ask user if they want to reboot now
+    if wt_yesno "Reboot System" "Would you like to reboot now?\n\nMake sure to remove the installation media." 10 60; then
+        log_step "Rebooting system..."
+        sleep 2
+        reboot
+    else
+        wt_msgbox "Manual Reboot" "Remember to reboot your system when ready:\n\n  reboot\n\nRemove the installation media before rebooting." 12 60
+    fi
 }
 
 # --- Entry Point -------------------------------------------------------------
