@@ -1000,6 +1000,7 @@ EOF
     arch-chroot /mnt bash -c "echo '${INSTALL_USER}:${INSTALL_USER_PASSWORD}' | chpasswd"
     
     # Configure sudo for wheel group using sudoers.d (safer than modifying /etc/sudoers directly)
+    mkdir -p /mnt/etc/sudoers.d
     echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/10-wheel
     chmod 440 /mnt/etc/sudoers.d/10-wheel
     
