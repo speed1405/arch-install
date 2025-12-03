@@ -976,20 +976,32 @@ run_bundles() {
     done
 }
 
-cleanup() {
-    # This cleanup runs on EXIT trap (errors, interrupts, etc.)
-    # Successful installation already cleaned up explicitly and set MOUNTED=false
-    # So if MOUNTED is still true here, something went wrong
-    if [[ $MOUNTED == true ]]; then
+perform_cleanup() {
+    # Common cleanup logic for both error and success cases
+    local show_error="${1:-false}"
+    
+    if [[ $show_error == true ]] && [[ $MOUNTED == true ]]; then
         log_error "Installation failed or interrupted - cleaning up..."
+    fi
+    
+    if [[ $MOUNTED == true ]]; then
         umount -R /mnt 2>/dev/null || true
+        MOUNTED=false
     fi
     if is_true "$INSTALL_USE_LVM"; then
         vgchange -an "$INSTALL_VG_NAME" >/dev/null 2>&1 || true
     fi
     if [[ $OPENED_LUKS == true ]]; then
         cryptsetup close "$CRYPT_DEVICE_NAME" >/dev/null 2>&1 || true
+        OPENED_LUKS=false
     fi
+}
+
+cleanup() {
+    # This cleanup runs on EXIT trap (errors, interrupts, etc.)
+    # Successful installation already cleaned up explicitly and set MOUNTED=false
+    # So if MOUNTED is still true here, something went wrong
+    perform_cleanup true
 }
 
 # --- Main Installation Flow -------------------------------------------------
@@ -1083,17 +1095,7 @@ main() {
     
     # Cleanup before showing completion message
     log_step "Unmounting filesystems..."
-    if [[ $MOUNTED == true ]]; then
-        umount -R /mnt 2>/dev/null || true
-        MOUNTED=false
-    fi
-    if is_true "$INSTALL_USE_LVM"; then
-        vgchange -an "$INSTALL_VG_NAME" >/dev/null 2>&1 || true
-    fi
-    if [[ $OPENED_LUKS == true ]]; then
-        cryptsetup close "$CRYPT_DEVICE_NAME" >/dev/null 2>&1 || true
-        OPENED_LUKS=false
-    fi
+    perform_cleanup false
     
     # Success message
     local success_msg="Installation completed successfully!\n\n"
