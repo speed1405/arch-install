@@ -14,7 +14,8 @@
 8. Creates a right-sized swapfile and fstab entry (with Btrfs-friendly swapfile prep when needed).
 9. Installs the bootloader you request: systemd-boot or GRUB on UEFI systems, GRUB (i386-pc) on BIOS/legacy, honoring `INSTALL_BOOT_MODE` and `INSTALL_BOOTLOADER` overrides.
 10. Optionally copies `install-desktop.sh` into the target, prompts you to pick a desktop (GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, i3, or none), and runs the desktop installer in the chroot when requested.
-11. Prints a short post-install checklist.
+11. Optionally stages and runs your own provisioning script inside the chroot (great for dotfiles, services, or additional automation).
+12. Prints a short post-install checklist.
 
 Each logical step lives in its own function (`partition_disk`, `install_base_system`, `setup_bootloader`, etc.), making it easy to reorder or override pieces as your workflow evolves.
 
@@ -61,6 +62,10 @@ By default the installer inspects `/sys/firmware/efi` to decide whether to treat
 - **UEFI:** the script creates a 512 MiB FAT32 EFI system partition, mounts it at `/boot`, and installs your chosen bootloader. The default (`INSTALL_BOOTLOADER=auto`) resolves to systemd-boot, but you can set `INSTALL_BOOTLOADER=grub` to install `grub-install --target=x86_64-efi` instead. Forcing `INSTALL_BOOT_MODE=uefi` while booted in legacy mode is blocked since UEFI tooling needs firmware support.
 - **BIOS/Legacy:** a 1 MiB BIOS boot partition (type `bios_grub`) is created so GRUB can embed its core image on GPT disks, while `/boot` simply lives on the root filesystem. GRUB is the only supported bootloader in this mode, so `INSTALL_BOOTLOADER` must be `auto` or `grub`. Use this when installing on older machines or when you want to force a legacy GRUB install even if the firmware currently exposes UEFI. Make sure the target hardware actually supports legacy boot before setting this.
 
+## Post-install provisioning
+
+Set `INSTALL_POST_SCRIPT` to a shell script on the live system (absolute path or relative to the installer directory) to have it copied into the new installation and executed via `arch-chroot /mnt`. Provide additional arguments with `INSTALL_POST_SCRIPT_ARGS="arg1 arg2"`. The script runs after optional desktop installation, so you can use it for dotfiles, service enablement, language runtime installs, etc. If the file cannot be found, the installer logs an error but continues.
+
 ## Network bootstrapping
 
 Set `NETWORK_BOOTSTRAP_ENABLE=true` when running from the ISO if you want the script to bring the link up via `nmcli` before it checks connectivity. Supported profiles:
@@ -103,6 +108,8 @@ Leave `NETWORK_BOOTSTRAP_ENABLE=false` when you prefer to configure networking m
 | `INSTALL_DESKTOP_CHOICE` | Preselect `gnome`, `kde`, `xfce`, `sway`, or `none` (skip prompt). | *empty* |
 | `INSTALL_DESKTOP_SCRIPT` | Path to the desktop helper script the installer should run. | `install-desktop.sh` |
 | `INSTALL_DESKTOP_EXTRAS` | Extra packages passed to `install-desktop.sh`. | *empty* |
+| `INSTALL_POST_SCRIPT` | Path to a post-install provisioning script executed inside the chroot. | *empty* |
+| `INSTALL_POST_SCRIPT_ARGS` | Arguments passed to the provisioning script. | *empty* |
 
 Adjust the functions in `install-arch.sh` if you need LVM, Btrfs, custom partitioning, or different bootloader behavior—the script is structured so each concern stays isolated.
 

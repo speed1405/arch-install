@@ -48,6 +48,8 @@ IFS=$'\n\t'
 : "${INSTALL_DESKTOP_CHOICE:=}"                 # Pre-select desktop (none, gnome, kde, xfce, sway).
 : "${INSTALL_DESKTOP_SCRIPT:=install-desktop.sh}" # Path to install-desktop helper script.
 : "${INSTALL_DESKTOP_EXTRAS:=}"                 # Extra packages passed to the desktop script.
+: "${INSTALL_POST_SCRIPT:=}"                   # Optional post-install provisioning script.
+: "${INSTALL_POST_SCRIPT_ARGS:=}"              # Space-delimited args for the provisioning script.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCH_MIRROR="https://mirror.rackspace.com/archlinux"
@@ -217,6 +219,23 @@ resolve_desktop_script() {
   echo ""
 }
 
+resolve_post_install_script() {
+  local candidate="$INSTALL_POST_SCRIPT"
+  if [[ -z $candidate ]]; then
+    echo ""
+    return
+  fi
+  if [[ -f $candidate ]]; then
+    printf '%s\n' "$candidate"
+    return
+  fi
+  if [[ -f "$SCRIPT_DIR/$candidate" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/$candidate"
+    return
+  fi
+  echo ""
+}
+
 maybe_install_desktop() {
   local choice="${INSTALL_DESKTOP_CHOICE,,}"
   if [[ -z $choice ]] && is_true "$INSTALL_DESKTOP_PROMPT"; then
@@ -252,6 +271,30 @@ maybe_install_desktop() {
   fi
   log_step "Running desktop installer (${choice})"
   arch-chroot /mnt /usr/bin/env "${env_args[@]}" "$target_path" || log_error "Desktop installation failed (choice: ${choice})."
+}
+
+run_post_install_script() {
+  local script_path
+  script_path=$(resolve_post_install_script)
+  if [[ -z $script_path ]]; then
+    if [[ -n $INSTALL_POST_SCRIPT ]]; then
+      log_error "Post-install script '${INSTALL_POST_SCRIPT}' not found."
+    fi
+    return
+  fi
+  local target_path="/root/$(basename "$script_path")"
+  log_step "Copying post-install script (${script_path} -> ${target_path})"
+  mkdir -p "/mnt$(dirname "$target_path")"
+  cp "$script_path" "/mnt${target_path}"
+  chmod +x "/mnt${target_path}"
+  local args=()
+  if [[ -n ${INSTALL_POST_SCRIPT_ARGS// /} ]]; then
+    read -ra args <<< "$INSTALL_POST_SCRIPT_ARGS"
+  fi
+  log_step "Running post-install script"
+  if ! arch-chroot /mnt "$target_path" "${args[@]}"; then
+    log_error "Post-install script failed (path: ${script_path})."
+  fi
 }
 
 validate_storage_inputs() {
@@ -865,6 +908,7 @@ main() {
   setup_swapfile
   setup_bootloader
   maybe_install_desktop
+  run_post_install_script
   post_install_summary
 }
 
