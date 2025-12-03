@@ -805,7 +805,10 @@ prepare_btrfs_subvolumes() {
         local subvol="${entry%%:*}"
         if [[ -n $subvol ]]; then
             if ! btrfs subvolume create "/mnt/${subvol}" >/dev/null 2>&1; then
-                umount /mnt || true
+                # Attempt cleanup before failing
+                if ! umount /mnt 2>/dev/null; then
+                    log_error "Failed to unmount /mnt during cleanup (this is non-critical)"
+                fi
                 fail "Failed to create Btrfs subvolume: ${subvol}"
             fi
         fi
@@ -1241,10 +1244,6 @@ main() {
     format_filesystems
     
     if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
-        # Validate prerequisites for subvolume creation
-        [[ -n $INSTALL_FILESYSTEM ]] || fail "INSTALL_FILESYSTEM not set"
-        [[ -n $INSTALL_LAYOUT ]] || fail "INSTALL_LAYOUT not set"
-        
         echo "25" ; echo "# Preparing Btrfs subvolumes..."
         prepare_btrfs_subvolumes
     fi
