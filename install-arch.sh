@@ -1293,7 +1293,7 @@ main() {
     success_msg+="The system is ready to boot.\n"
     success_msg+="Remove the installation media before rebooting."
     
-    wt_msgbox "Installation Complete" "$success_msg" 18 75
+    wt_msgbox "Installation Complete" "$success_msg" 18 75 || true
     
     # Ask user if they want to reboot now
     if wt_yesno "Reboot System" "Would you like to reboot now?\n\nMake sure to remove the installation media." 10 60; then
@@ -1301,7 +1301,7 @@ main() {
         sleep 2
         reboot
     else
-        wt_msgbox "Manual Reboot" "Remember to reboot your system when ready:\n\n  reboot\n\nRemove the installation media before rebooting." 12 60
+        wt_msgbox "Manual Reboot" "Remember to reboot your system when ready:\n\n  reboot\n\nRemove the installation media before rebooting." 12 60 || true
     fi
 }
 
