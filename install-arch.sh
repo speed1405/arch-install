@@ -998,7 +998,11 @@ EOF
     arch-chroot /mnt bash -c "echo 'root:${INSTALL_ROOT_PASSWORD}' | chpasswd"
     arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$INSTALL_USER"
     arch-chroot /mnt bash -c "echo '${INSTALL_USER}:${INSTALL_USER_PASSWORD}' | chpasswd"
-    arch-chroot /mnt sed -i 's/^# \(%wheel ALL=(ALL:ALL) ALL\)/\1/' /etc/sudoers
+    
+    # Configure sudo for wheel group using sudoers.d (safer than modifying /etc/sudoers directly)
+    mkdir -p /mnt/etc/sudoers.d
+    echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/10-wheel
+    chmod 440 /mnt/etc/sudoers.d/10-wheel
     
     # NetworkManager
     arch-chroot /mnt systemctl enable NetworkManager >/dev/null 2>&1
