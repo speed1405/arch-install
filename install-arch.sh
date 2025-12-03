@@ -544,9 +544,9 @@ select_bundles() {
     if [[ -n $selected ]]; then
         # Parse all selected bundles (whiptail returns space-separated quoted items)
         INSTALL_BUNDLE_CHOICES=()
-        for bundle in $selected; do
-            # Remove quotes from bundle name
-            bundle=$(echo "$bundle" | tr -d '"')
+        # Use eval to properly handle quoted strings
+        eval "set -- $selected"
+        for bundle in "$@"; do
             INSTALL_BUNDLE_CHOICES+=("$bundle")
         done
     fi
