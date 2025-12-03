@@ -52,6 +52,7 @@ Interactive menus for user configuration:
 - `select_encryption()` - LUKS setup
 - `configure_system_settings()` - Hostname, timezone, locale
 - `configure_users()` - Root and user accounts
+- `select_mirror_region()` - Package mirror selection
 - `select_desktop()` - Desktop environment
 - `select_bundles()` - Software bundles
 - `show_installation_summary()` - Review settings
@@ -70,6 +71,7 @@ Core installation operations:
 - `format_filesystems()` - Format root/home
 - `prepare_btrfs_subvolumes()` - Btrfs setup
 - `mount_filesystems()` - Mount all filesystems
+- `update_mirrorlist()` - Update package mirrors
 - `install_base_system()` - Pacstrap base packages
 - `generate_fstab()` - Create fstab
 - `configure_system()` - System configuration
@@ -103,6 +105,7 @@ main()
   │   ├── select_encryption()
   │   ├── configure_system_settings()
   │   ├── configure_users()
+  │   ├── select_mirror_region()
   │   ├── select_desktop()
   │   ├── select_bundles()
   │   └── show_installation_summary()
@@ -119,6 +122,7 @@ main()
       ├── format_filesystems()
       ├── prepare_btrfs_subvolumes()
       ├── mount_filesystems()
+      ├── update_mirrorlist()
       ├── install_base_system()
       ├── generate_fstab()
       ├── configure_system()

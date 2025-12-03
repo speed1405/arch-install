@@ -36,6 +36,7 @@ INSTALL_BOOT_MODE="auto"
 INSTALL_BOOTLOADER="auto"
 INSTALL_DESKTOP_CHOICE="none"
 INSTALL_BUNDLE_CHOICES=()
+INSTALL_MIRROR_REGION="Worldwide"
 BTRFS_MOUNT_OPTS="compress=zstd,autodefrag"
 BTRFS_SUBVOLUMES="@:/ @home:/home @var_log:/var/log @var_cache:/var/cache @snapshots:/.snapshots"
 
@@ -551,6 +552,38 @@ select_bundles() {
     fi
 }
 
+select_mirror_region() {
+    local region_choice
+    region_choice=$(wt_menu "Package Mirror Region" "Select your preferred mirror region for faster downloads:" 22 75 12 \
+        "1" "Worldwide (use all mirrors)" \
+        "2" "United States" \
+        "3" "Canada" \
+        "4" "United Kingdom" \
+        "5" "Germany" \
+        "6" "France" \
+        "7" "Australia" \
+        "8" "Japan" \
+        "9" "China" \
+        "10" "India" \
+        "11" "Brazil" \
+        "12" "Skip (use default mirrors)")
+    
+    case "$region_choice" in
+        1) INSTALL_MIRROR_REGION="Worldwide" ;;
+        2) INSTALL_MIRROR_REGION="United States" ;;
+        3) INSTALL_MIRROR_REGION="Canada" ;;
+        4) INSTALL_MIRROR_REGION="United Kingdom" ;;
+        5) INSTALL_MIRROR_REGION="Germany" ;;
+        6) INSTALL_MIRROR_REGION="France" ;;
+        7) INSTALL_MIRROR_REGION="Australia" ;;
+        8) INSTALL_MIRROR_REGION="Japan" ;;
+        9) INSTALL_MIRROR_REGION="China" ;;
+        10) INSTALL_MIRROR_REGION="India" ;;
+        11) INSTALL_MIRROR_REGION="Brazil" ;;
+        12|*) INSTALL_MIRROR_REGION="Skip" ;;
+    esac
+}
+
 show_installation_summary() {
     local summary="Installation Configuration Summary:\n\n"
     summary+="Disk: ${INSTALL_DISK}\n"
@@ -565,6 +598,7 @@ show_installation_summary() {
     summary+="Locale: ${INSTALL_LOCALE}\n"
     summary+="Keymap: ${INSTALL_KEYMAP}\n"
     summary+="User: ${INSTALL_USER}\n\n"
+    summary+="Mirror Region: ${INSTALL_MIRROR_REGION}\n"
     summary+="Desktop: ${INSTALL_DESKTOP_CHOICE}\n"
     if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
         summary+="Bundles: ${INSTALL_BUNDLE_CHOICES[*]}\n\n"
@@ -782,6 +816,97 @@ mount_filesystems() {
     MOUNTED=true
 }
 
+update_mirrorlist() {
+    [[ $INSTALL_MIRROR_REGION == "Skip" ]] && return
+    
+    log_step "Updating mirrorlist for ${INSTALL_MIRROR_REGION}"
+    
+    # Create backup of original mirrorlist
+    cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+    
+    # Use reflector if available, otherwise use manual filtering
+    if command -v reflector >/dev/null 2>&1; then
+        local reflector_args=(--verbose --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist)
+        
+        case "$INSTALL_MIRROR_REGION" in
+            "United States")
+                reflector_args+=(--country "United States")
+                ;;
+            "Canada")
+                reflector_args+=(--country Canada)
+                ;;
+            "United Kingdom")
+                reflector_args+=(--country "United Kingdom")
+                ;;
+            "Germany")
+                reflector_args+=(--country Germany)
+                ;;
+            "France")
+                reflector_args+=(--country France)
+                ;;
+            "Australia")
+                reflector_args+=(--country Australia)
+                ;;
+            "Japan")
+                reflector_args+=(--country Japan)
+                ;;
+            "China")
+                reflector_args+=(--country China)
+                ;;
+            "India")
+                reflector_args+=(--country India)
+                ;;
+            "Brazil")
+                reflector_args+=(--country Brazil)
+                ;;
+            "Worldwide"|*)
+                # Use all countries for worldwide
+                ;;
+        esac
+        
+        reflector "${reflector_args[@]}" || {
+            log_error "Reflector failed, keeping default mirrors"
+            cp /etc/pacman.d/mirrorlist.backup /etc/pacman.d/mirrorlist
+        }
+    else
+        # Fallback: use simple awk-based filtering by region
+        log_info "Reflector not available, using basic mirror filtering"
+        
+        # Extract mirrors for the selected region
+        local search_term
+        case "$INSTALL_MIRROR_REGION" in
+            "United States") search_term="United States" ;;
+            "Canada") search_term="Canada" ;;
+            "United Kingdom") search_term="United Kingdom" ;;
+            "Germany") search_term="Germany" ;;
+            "France") search_term="France" ;;
+            "Australia") search_term="Australia" ;;
+            "Japan") search_term="Japan" ;;
+            "China") search_term="China" ;;
+            "India") search_term="India" ;;
+            "Brazil") search_term="Brazil" ;;
+            *) 
+                # For Worldwide, use all mirrors
+                return
+                ;;
+        esac
+        
+        # Uncomment mirrors matching the region (using index for safe substring search)
+        if [[ -n $search_term ]]; then
+            awk -v region="$search_term" '
+                BEGIN { in_region=0 }
+                /^## / && index($0, region) > 0 { in_region=1; print; next }
+                /^##/ { in_region=0; print; next }
+                /^#Server/ && in_region { sub(/^#/, ""); print; next }
+                { print }
+            ' /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist || {
+                log_error "Mirror filtering failed, keeping default mirrors"
+                cp /etc/pacman.d/mirrorlist.backup /etc/pacman.d/mirrorlist
+            }
+        fi
+    fi
+}
+
 install_base_system() {
     log_step "Installing base system"
     
@@ -867,10 +992,12 @@ setup_swapfile() {
     if [[ $INSTALL_FILESYSTEM == "btrfs" ]]; then
         arch-chroot /mnt truncate -s 0 /swapfile
         arch-chroot /mnt chattr +C /swapfile
+        arch-chroot /mnt fallocate -l "${size_gb}G" /swapfile
         arch-chroot /mnt btrfs property set /swapfile compression none
+    else
+        arch-chroot /mnt fallocate -l "${size_gb}G" /swapfile
     fi
     
-    arch-chroot /mnt fallocate -l "${size_gb}G" /swapfile
     arch-chroot /mnt chmod 600 /swapfile
     arch-chroot /mnt mkswap /swapfile >/dev/null 2>&1
     echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
@@ -1029,6 +1156,7 @@ main() {
     select_encryption
     configure_system_settings
     configure_users
+    select_mirror_region
     select_desktop
     select_bundles
     
@@ -1067,6 +1195,9 @@ main() {
     
     echo "30" ; echo "# Mounting filesystems..."
     mount_filesystems
+    
+    echo "32" ; echo "# Updating package mirrors..."
+    update_mirrorlist
     
     echo "35" ; echo "# Installing base system (this will take several minutes)..."
     install_base_system
