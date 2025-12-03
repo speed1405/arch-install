@@ -119,7 +119,7 @@ for battery_path in /sys/class/power_supply/BAT* /sys/class/power_supply/battery
   fi
 done
 
-if [[ "$has_battery" == "true" ]]; then
+if [[ "$has_battery" == true ]]; then
   log_step "Laptop battery detected, installing TLP"
   install_pkgs tlp tlp-rdw
   systemctl enable tlp.service
