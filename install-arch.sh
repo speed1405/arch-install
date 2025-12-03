@@ -1227,8 +1227,10 @@ main() {
     echo "20" ; echo "# Formatting filesystems..."
     format_filesystems
     
-    echo "25" ; echo "# Preparing Btrfs subvolumes..."
-    prepare_btrfs_subvolumes
+    if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
+        echo "25" ; echo "# Preparing Btrfs subvolumes..."
+        prepare_btrfs_subvolumes
+    fi
     
     echo "30" ; echo "# Mounting filesystems..."
     mount_filesystems
