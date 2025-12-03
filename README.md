@@ -13,7 +13,7 @@
 7. Applies localization, hostname, network, user, sudo settings, and injects the `lvm2` initramfs hook when needed.
 8. Creates a right-sized swapfile and fstab entry (with Btrfs-friendly swapfile prep when needed).
 9. Installs the bootloader you request: systemd-boot or GRUB on UEFI systems, GRUB (i386-pc) on BIOS/legacy, honoring `INSTALL_BOOT_MODE` and `INSTALL_BOOTLOADER` overrides.
-10. Optionally copies `install-desktop.sh` into the target, prompts you to pick a desktop (GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, i3, or none), and runs the desktop installer in the chroot when requested.
+10. Optionally copies `install-desktop.sh` into the target, prompting via ncurses (`dialog`) when available (or plain text otherwise) to pick GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, i3, or none, then runs the desktop installer in the chroot when requested.
 11. Optionally stages and runs your own provisioning script inside the chroot (great for dotfiles, services, or additional automation).
 12. Prints a short post-install checklist.
 
@@ -77,6 +77,10 @@ Starter bundles included in this repo:
 - `cloud.sh` – kubectl/helm/terraform plus major cloud CLIs.
 - `creative.sh` – graphics/audio/video production apps.
 
+## Interactive menus (ncurses)
+
+The installer can show ncurses menus via `dialog` for desktop selection and bundle prompts. Set `INSTALL_TUI_MODE=auto` (default) to use `dialog` when present, `INSTALL_TUI_MODE=dialog` to require it (install with `pacman -Sy dialog` inside the live ISO), or `INSTALL_TUI_MODE=text` to force simple `read -p` prompts.
+
 ## Network bootstrapping
 
 Set `NETWORK_BOOTSTRAP_ENABLE=true` when running from the ISO if you want the script to bring the link up via `nmcli` before it checks connectivity. Supported profiles:
@@ -119,6 +123,7 @@ Leave `NETWORK_BOOTSTRAP_ENABLE=false` when you prefer to configure networking m
 | `INSTALL_DESKTOP_CHOICE` | Preselect `gnome`, `kde`, `xfce`, `sway`, or `none` (skip prompt). | *empty* |
 | `INSTALL_DESKTOP_SCRIPT` | Path to the desktop helper script the installer should run. | `install-desktop.sh` |
 | `INSTALL_DESKTOP_EXTRAS` | Extra packages passed to `install-desktop.sh`. | *empty* |
+| `INSTALL_TUI_MODE` | Interaction style for prompts: `auto`, `dialog`, or `text`. | `auto` |
 | `INSTALL_POST_SCRIPT` | Path to a post-install provisioning script executed inside the chroot. | *empty* |
 | `INSTALL_POST_SCRIPT_ARGS` | Arguments passed to the provisioning script. | *empty* |
 | `INSTALL_BUNDLE_DIR` | Directory scanned for bundle scripts when selecting post-install automation. | `bundles` |

@@ -48,6 +48,7 @@ IFS=$'\n\t'
 : "${INSTALL_DESKTOP_CHOICE:=}"                 # Pre-select desktop (none, gnome, kde, xfce, sway).
 : "${INSTALL_DESKTOP_SCRIPT:=install-desktop.sh}" # Path to install-desktop helper script.
 : "${INSTALL_DESKTOP_EXTRAS:=}"                 # Extra packages passed to the desktop script.
+: "${INSTALL_TUI_MODE:=auto}"                  # auto, dialog, text.
 : "${INSTALL_POST_SCRIPT:=}"                   # Optional post-install provisioning script.
 : "${INSTALL_POST_SCRIPT_ARGS:=}"              # Space-delimited args for the provisioning script.
 : "${INSTALL_BUNDLE_DIR:=bundles}"             # Directory containing bundle scripts.
@@ -77,12 +78,73 @@ HOME_DEVICE=""
 MICROCODE=""
 MICROCODE_IMG=""
 GPU_DRIVER=""
+TUI_DIALOG_WARNED=false
 
 # --- Logging helpers ---------------------------------------------------------
 log_step() { printf '\n==> %s\n' "$1"; }
 log_info() { printf '    - %s\n' "$1"; }
 log_error() { printf 'ERROR: %s\n' "$1" >&2; }
 fail() { log_error "$1"; exit 1; }
+
+ensure_executable() {
+  local file="$1"
+  [[ -f $file ]] || return
+  if [[ ! -x $file ]]; then
+    chmod +x "$file" 2>/dev/null || true
+  fi
+}
+
+tui_use_dialog() {
+  local mode="${INSTALL_TUI_MODE,,}"
+  case "$mode" in
+    text|none)
+      return 1
+      ;;
+    dialog)
+      if command -v dialog >/dev/null 2>&1; then
+        return 0
+      fi
+      if [[ $TUI_DIALOG_WARNED == false ]]; then
+        log_error "INSTALL_TUI_MODE=dialog requested but 'dialog' is not installed; falling back to text prompts."
+        TUI_DIALOG_WARNED=true
+      fi
+      return 1
+      ;;
+    auto|"")
+      command -v dialog >/dev/null 2>&1
+      return $?
+      ;;
+    *)
+      log_error "Unknown INSTALL_TUI_MODE '${INSTALL_TUI_MODE}', defaulting to text prompts."
+      return 1
+      ;;
+  esac
+}
+
+dialog_menu_select() {
+  local title="$1" prompt="$2"
+  shift 2
+  local options=("$@")
+  local pairs=$(( ${#options[@]} / 2 ))
+  (( pairs > 0 )) || return 1
+  local height=$(( pairs + 8 ))
+  (( height < 15 )) && height=15
+  local width=70
+  local menu_height=$pairs
+  (( menu_height > 10 )) && menu_height=10
+  (( menu_height < 6 )) && menu_height=6
+  local tmp
+  tmp=$(mktemp)
+  dialog --clear --no-tags --title "$title" --menu "$prompt" "$height" "$width" "$menu_height" "${options[@]}" 2>"$tmp"
+  local status=$?
+  local selection=""
+  if [[ $status -eq 0 ]]; then
+    selection=$(<"$tmp")
+  fi
+  rm -f "$tmp"
+  [[ $status -eq 0 ]] || return $status
+  printf '%s\n' "$selection"
+}
 
 # --- Guardrails --------------------------------------------------------------
 require_root() { [[ ${EUID} -eq 0 ]] || fail "Run this installer as root."; }
@@ -199,7 +261,26 @@ bootstrap_networking() {
 }
 
 prompt_desktop_selection() {
-  local prompt="Install desktop environment now? (none/gnome/kde/xfce/sway) [none]: "
+  if tui_use_dialog; then
+    local options=(
+      none "Skip desktop installation"
+      gnome "GNOME"
+      kde "KDE Plasma"
+      xfce "XFCE"
+      cinnamon "Cinnamon"
+      mate "MATE"
+      budgie "Budgie"
+      lxqt "LXQt"
+      sway "Sway"
+      i3 "i3"
+    )
+    local selection
+    if selection=$(dialog_menu_select "Desktop Selection" "Choose a desktop environment" "${options[@]}"); then
+      echo "${selection,,}"
+      return
+    fi
+  fi
+  local prompt="Install desktop environment now? (none/gnome/kde/xfce/sway/cinnamon/mate/budgie/lxqt/i3) [none]: "
   local response
   read -r -p "$prompt" response || true
   response=${response:-none}
@@ -268,7 +349,7 @@ maybe_install_desktop() {
     return
   fi
   case "$choice" in
-    gnome|kde|xfce|sway) ;;
+    gnome|kde|xfce|sway|cinnamon|mate|budgie|lxqt|i3) ;;
     none) return ;;
     *)
       log_error "Unknown desktop option '${choice}'. Skipping desktop installation."
@@ -283,6 +364,7 @@ maybe_install_desktop() {
   fi
   local target_path="/root/$(basename "$script_path")"
   log_step "Copying desktop installer to target (${script_path} -> ${target_path})"
+  ensure_executable "$script_path"
   mkdir -p "/mnt$(dirname "$target_path")"
   cp "$script_path" "/mnt${target_path}"
   chmod +x "/mnt${target_path}"
@@ -305,6 +387,7 @@ run_post_install_script() {
   fi
   local target_path="/root/$(basename "$script_path")"
   log_step "Copying post-install script (${script_path} -> ${target_path})"
+  ensure_executable "$script_path"
   mkdir -p "/mnt$(dirname "$target_path")"
   cp "$script_path" "/mnt${target_path}"
   chmod +x "/mnt${target_path}"
@@ -333,12 +416,27 @@ select_bundle_script() {
     if ! is_true "$INSTALL_BUNDLE_PROMPT"; then
       return
     fi
-    log_step "Available bundle scripts"
-    local idx
-    for idx in "${!bundle_paths[@]}"; do
-      log_info "$((idx + 1)). $(basename "${bundle_paths[$idx]}")"
-    done
-    read -r -p "Select bundle (name/number/none) [none]: " choice || true
+    if tui_use_dialog; then
+      local options=()
+      local idx
+      for idx in "${!bundle_paths[@]}"; do
+        options+=("$((idx + 1))" "$(basename "${bundle_paths[$idx]}")")
+      done
+      options+=(none "Skip bundle")
+      local selection
+      if selection=$(dialog_menu_select "Bundle Selection" "Choose a provisioning bundle" "${options[@]}"); then
+        choice="$selection"
+      else
+        choice="none"
+      fi
+    else
+      log_step "Available bundle scripts"
+      local idx
+      for idx in "${!bundle_paths[@]}"; do
+        log_info "$((idx + 1)). $(basename "${bundle_paths[$idx]}")"
+      done
+      read -r -p "Select bundle (name/number/none) [none]: " choice || true
+    fi
   fi
   choice=${choice:-none}
   if [[ ${choice,,} == none ]]; then
