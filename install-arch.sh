@@ -1027,11 +1027,11 @@ EOF
     # Initramfs hooks
     local need_mkinit=false
     if is_true "$INSTALL_USE_LUKS"; then
-        arch-chroot /mnt sed -i '/^HOOKS=/ s/\(block\)/\1 encrypt/' /etc/mkinitcpio.conf
+        sed -i '/^HOOKS=/ s/\(block\)/\1 encrypt/' /mnt/etc/mkinitcpio.conf
         need_mkinit=true
     fi
     if is_true "$INSTALL_USE_LVM"; then
-        arch-chroot /mnt sed -i '/^HOOKS=/ s/\(filesystems\)/lvm2 \1/' /etc/mkinitcpio.conf
+        sed -i '/^HOOKS=/ s/\(filesystems\)/lvm2 \1/' /mnt/etc/mkinitcpio.conf
         need_mkinit=true
     fi
     [[ $need_mkinit == true ]] && arch-chroot /mnt mkinitcpio -P >/dev/null 2>&1
