@@ -894,7 +894,8 @@ update_mirrorlist() {
         # Uncomment mirrors matching the region
         if [[ -n $search_term ]]; then
             awk -v region="$search_term" '
-                /^## '"$search_term"'/ { in_region=1; print; next }
+                BEGIN { in_region=0 }
+                /^## / && index($0, region) > 0 { in_region=1; print; next }
                 /^##/ { in_region=0; print; next }
                 /^#Server/ && in_region { sub(/^#/, ""); print; next }
                 { print }
