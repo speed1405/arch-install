@@ -791,15 +791,28 @@ prepare_btrfs_subvolumes() {
     [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]] || return
     
     log_step "Creating Btrfs subvolumes"
-    mount "$ROOT_DEVICE" /mnt
     
+    # Validate ROOT_DEVICE is set
+    [[ -n $ROOT_DEVICE ]] || fail "ROOT_DEVICE not set, cannot create subvolumes"
+    [[ -b $ROOT_DEVICE ]] || fail "ROOT_DEVICE ($ROOT_DEVICE) is not a block device"
+    
+    # Mount root device
+    mount "$ROOT_DEVICE" /mnt || fail "Failed to mount $ROOT_DEVICE for subvolume creation"
+    
+    # Create subvolumes with error checking
     IFS=' ' read -ra subvol_entries <<< "$BTRFS_SUBVOLUMES"
     for entry in "${subvol_entries[@]}"; do
         local subvol="${entry%%:*}"
-        [[ -n $subvol ]] && btrfs subvolume create "/mnt/${subvol}" >/dev/null 2>&1
+        if [[ -n $subvol ]]; then
+            if ! btrfs subvolume create "/mnt/${subvol}" >/dev/null 2>&1; then
+                umount /mnt || true
+                fail "Failed to create Btrfs subvolume: ${subvol}"
+            fi
+        fi
     done
     
-    umount /mnt
+    # Unmount with error checking
+    umount /mnt || fail "Failed to unmount /mnt after creating subvolumes"
 }
 
 mount_filesystems() {
@@ -1228,6 +1241,10 @@ main() {
     format_filesystems
     
     if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
+        # Validate prerequisites for subvolume creation
+        [[ -n $INSTALL_FILESYSTEM ]] || fail "INSTALL_FILESYSTEM not set"
+        [[ -n $INSTALL_LAYOUT ]] || fail "INSTALL_LAYOUT not set"
+        
         echo "25" ; echo "# Preparing Btrfs subvolumes..."
         prepare_btrfs_subvolumes
     fi
