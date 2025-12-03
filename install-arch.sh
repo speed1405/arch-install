@@ -791,15 +791,32 @@ prepare_btrfs_subvolumes() {
     [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]] || return
     
     log_step "Creating Btrfs subvolumes"
-    mount "$ROOT_DEVICE" /mnt
     
+    # Validate ROOT_DEVICE is set
+    [[ -n $ROOT_DEVICE ]] || fail "ROOT_DEVICE not set, cannot create subvolumes"
+    [[ -b $ROOT_DEVICE ]] || fail "ROOT_DEVICE ($ROOT_DEVICE) is not a block device"
+    
+    # Mount root device
+    mount "$ROOT_DEVICE" /mnt || fail "Failed to mount $ROOT_DEVICE for subvolume creation"
+    
+    # Create subvolumes with error checking
+    local subvol entry subvol_entries
     IFS=' ' read -ra subvol_entries <<< "$BTRFS_SUBVOLUMES"
     for entry in "${subvol_entries[@]}"; do
-        local subvol="${entry%%:*}"
-        [[ -n $subvol ]] && btrfs subvolume create "/mnt/${subvol}" >/dev/null 2>&1
+        subvol="${entry%%:*}"
+        if [[ -n $subvol ]]; then
+            if ! btrfs subvolume create "/mnt/${subvol}" >/dev/null 2>&1; then
+                # Attempt cleanup before failing (cleanup failure is non-critical since we're already failing)
+                if ! umount /mnt 2>/dev/null; then
+                    log_error "Failed to unmount /mnt during error cleanup"
+                fi
+                fail "Failed to create Btrfs subvolume: ${subvol}"
+            fi
+        fi
     done
     
-    umount /mnt
+    # Unmount with error checking
+    umount /mnt || fail "Failed to unmount /mnt after creating subvolumes"
 }
 
 mount_filesystems() {
@@ -1227,8 +1244,10 @@ main() {
     echo "20" ; echo "# Formatting filesystems..."
     format_filesystems
     
-    echo "25" ; echo "# Preparing Btrfs subvolumes..."
-    prepare_btrfs_subvolumes
+    if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
+        echo "25" ; echo "# Preparing Btrfs subvolumes..."
+        prepare_btrfs_subvolumes
+    fi
     
     echo "30" ; echo "# Mounting filesystems..."
     mount_filesystems
