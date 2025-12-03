@@ -35,7 +35,7 @@ INSTALL_LUKS_PASSPHRASE=""
 INSTALL_BOOT_MODE="auto"
 INSTALL_BOOTLOADER="auto"
 INSTALL_DESKTOP_CHOICE="none"
-INSTALL_BUNDLE_CHOICE=""
+INSTALL_BUNDLE_CHOICES=()
 BTRFS_MOUNT_OPTS="compress=zstd,autodefrag"
 BTRFS_SUBVOLUMES="@:/ @home:/home @var_log:/var/log @var_cache:/var/cache @snapshots:/.snapshots"
 
@@ -531,7 +531,7 @@ select_bundles() {
         bundles+=("creative" "Creative apps (GIMP, Blender)" OFF)
     fi
     if [[ -f "${bundle_dir}/desktop-utilities.sh" ]]; then
-        bundles+=("utilities" "Desktop utilities (browsers, office)" OFF)
+        bundles+=("desktop-utilities" "Desktop utilities (browsers, office)" OFF)
     fi
     
     if [[ ${#bundles[@]} -eq 0 ]]; then
@@ -542,8 +542,12 @@ select_bundles() {
     selected=$(wt_checklist "Additional Software" "Select optional software bundles:" 20 75 10 "${bundles[@]}" || echo "")
     
     if [[ -n $selected ]]; then
-        # Convert selected items to bundle choice (just take first for now)
-        INSTALL_BUNDLE_CHOICE=$(echo "$selected" | tr -d '"' | awk '{print $1}')
+        # Parse all selected bundles (whiptail returns space-separated quoted items)
+        # Safer parsing without eval - remove quotes and split by space
+        INSTALL_BUNDLE_CHOICES=()
+        while IFS= read -r bundle; do
+            [[ -n $bundle ]] && INSTALL_BUNDLE_CHOICES+=("$bundle")
+        done < <(echo "$selected" | tr -d '"' | tr ' ' '\n')
     fi
 }
 
@@ -562,7 +566,11 @@ show_installation_summary() {
     summary+="Keymap: ${INSTALL_KEYMAP}\n"
     summary+="User: ${INSTALL_USER}\n\n"
     summary+="Desktop: ${INSTALL_DESKTOP_CHOICE}\n"
-    summary+="Bundle: ${INSTALL_BUNDLE_CHOICE:-none}\n\n"
+    if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
+        summary+="Bundles: ${INSTALL_BUNDLE_CHOICES[*]}\n\n"
+    else
+        summary+="Bundles: none\n\n"
+    fi
     summary+="Proceed with installation?"
     
     if ! wt_yesno "Installation Summary" "$summary" 24 75; then
@@ -792,7 +800,8 @@ install_base_system() {
     
     packages+=(nano vim git sudo)
     
-    pacstrap -K /mnt "${packages[@]}" >/dev/null 2>&1
+    # Show pacstrap output for visibility
+    pacstrap -K /mnt "${packages[@]}"
 }
 
 generate_fstab() {
@@ -930,40 +939,69 @@ install_desktop() {
     local desktop_script="${SCRIPT_DIR}/install-desktop.sh"
     [[ -f $desktop_script ]] || return
     
-    log_step "Installing desktop environment"
+    log_step "Installing desktop environment: ${INSTALL_DESKTOP_CHOICE}"
     
     local target_path="/root/install-desktop.sh"
     cp "$desktop_script" "/mnt${target_path}"
     chmod +x "/mnt${target_path}"
     
-    arch-chroot /mnt env "DESKTOP_ENV=${INSTALL_DESKTOP_CHOICE}" "$target_path" >/dev/null 2>&1
+    # Show output so users can see desktop installation progress
+    arch-chroot /mnt env "DESKTOP_ENV=${INSTALL_DESKTOP_CHOICE}" "$target_path"
 }
 
-run_bundle() {
-    [[ -z $INSTALL_BUNDLE_CHOICE ]] && return
+run_bundles() {
+    [[ ${#INSTALL_BUNDLE_CHOICES[@]} -eq 0 ]] && return
     
-    local bundle_script="${SCRIPT_DIR}/${INSTALL_BUNDLE_CHOICE}.sh"
-    [[ -f $bundle_script ]] || return
+    log_step "Installing ${#INSTALL_BUNDLE_CHOICES[@]} software bundle(s)"
     
-    log_step "Running bundle: ${INSTALL_BUNDLE_CHOICE}"
-    
-    local target_path="/root/bundle.sh"
-    cp "$bundle_script" "/mnt${target_path}"
-    chmod +x "/mnt${target_path}"
-    
-    arch-chroot /mnt "$target_path" >/dev/null 2>&1
+    for bundle in "${INSTALL_BUNDLE_CHOICES[@]}"; do
+        local bundle_script="${SCRIPT_DIR}/${bundle}.sh"
+        
+        if [[ ! -f $bundle_script ]]; then
+            log_error "Bundle script not found: ${bundle_script}"
+            continue
+        fi
+        
+        log_step "Running bundle: ${bundle}"
+        
+        local target_path="/root/bundle-${bundle}.sh"
+        cp "$bundle_script" "/mnt${target_path}"
+        chmod +x "/mnt${target_path}"
+        
+        # Show output so users can see bundle installation progress
+        arch-chroot /mnt "$target_path"
+        
+        # Clean up the copied script
+        rm -f "/mnt${target_path}"
+    done
 }
 
-cleanup() {
+perform_cleanup() {
+    # Common cleanup logic for both error and success cases
+    local show_error="${1:-false}"
+    
+    if [[ $show_error == true ]] && [[ $MOUNTED == true ]]; then
+        log_error "Installation failed or interrupted - cleaning up..."
+    fi
+    
     if [[ $MOUNTED == true ]]; then
         umount -R /mnt 2>/dev/null || true
+        MOUNTED=false
     fi
     if is_true "$INSTALL_USE_LVM"; then
         vgchange -an "$INSTALL_VG_NAME" >/dev/null 2>&1 || true
     fi
     if [[ $OPENED_LUKS == true ]]; then
         cryptsetup close "$CRYPT_DEVICE_NAME" >/dev/null 2>&1 || true
+        OPENED_LUKS=false
     fi
+}
+
+cleanup() {
+    # This cleanup runs on EXIT trap (errors, interrupts, etc.)
+    # Successful installation already cleaned up explicitly and set MOUNTED=false
+    # So if MOUNTED is still true here, something went wrong
+    perform_cleanup true
 }
 
 # --- Main Installation Flow -------------------------------------------------
@@ -1006,68 +1044,58 @@ main() {
     
     trap cleanup EXIT
     
-    # Installation progress
-    {
-        echo "0"
-        echo "# Partitioning disk..."
-        partition_disk "$TARGET_DISK"
-        
-        echo "5"
-        echo "# Formatting boot partition..."
-        format_boot_partition
-        
-        echo "10"
-        echo "# Setting up encryption..."
-        setup_luks_container
-        
-        echo "15"
-        echo "# Configuring storage..."
-        setup_storage_stack
-        
-        echo "20"
-        echo "# Formatting filesystems..."
-        format_filesystems
-        
-        echo "25"
-        echo "# Preparing Btrfs subvolumes..."
-        prepare_btrfs_subvolumes
-        
-        echo "30"
-        echo "# Mounting filesystems..."
-        mount_filesystems
-        
-        echo "35"
-        echo "# Installing base system (this may take a while)..."
-        install_base_system
-        
-        echo "60"
-        echo "# Generating fstab..."
-        generate_fstab
-        
-        echo "65"
-        echo "# Configuring system..."
-        configure_system
-        
-        echo "75"
-        echo "# Creating swapfile..."
-        setup_swapfile
-        
-        echo "80"
-        echo "# Installing bootloader..."
-        setup_bootloader
-        
-        echo "85"
-        echo "# Installing desktop environment..."
-        install_desktop
-        
-        echo "95"
-        echo "# Running post-install bundle..."
-        run_bundle
-        
-        echo "100"
-        echo "# Installation complete!"
-        sleep 2
-    } | wt_gauge "Installing Arch Linux" "Please wait while the installation completes..." 8 70
+    # Installation progress - show on console
+    log_step "Starting installation process..."
+    
+    echo "0" ; echo "# Partitioning disk..."
+    partition_disk "$TARGET_DISK"
+    
+    echo "5" ; echo "# Formatting boot partition..."
+    format_boot_partition
+    
+    echo "10" ; echo "# Setting up encryption..."
+    setup_luks_container
+    
+    echo "15" ; echo "# Configuring storage..."
+    setup_storage_stack
+    
+    echo "20" ; echo "# Formatting filesystems..."
+    format_filesystems
+    
+    echo "25" ; echo "# Preparing Btrfs subvolumes..."
+    prepare_btrfs_subvolumes
+    
+    echo "30" ; echo "# Mounting filesystems..."
+    mount_filesystems
+    
+    echo "35" ; echo "# Installing base system (this will take several minutes)..."
+    install_base_system
+    
+    echo "60" ; echo "# Generating fstab..."
+    generate_fstab
+    
+    echo "65" ; echo "# Configuring system..."
+    configure_system
+    
+    echo "75" ; echo "# Creating swapfile..."
+    setup_swapfile
+    
+    echo "80" ; echo "# Installing bootloader..."
+    setup_bootloader
+    
+    echo "85" ; echo "# Installing desktop environment..."
+    install_desktop
+    
+    echo "95" ; echo "# Running post-install bundles..."
+    run_bundles
+    
+    echo "100" ; echo "# Installation complete!"
+    
+    log_step "Installation completed successfully!"
+    
+    # Cleanup before showing completion message
+    log_step "Unmounting filesystems..."
+    perform_cleanup false
     
     # Success message
     local success_msg="Installation completed successfully!\n\n"
@@ -1075,13 +1103,19 @@ main() {
     success_msg+="• Hostname: ${INSTALL_HOSTNAME}\n"
     success_msg+="• User: ${INSTALL_USER}\n"
     success_msg+="• Desktop: ${INSTALL_DESKTOP_CHOICE}\n\n"
-    success_msg+="Next steps:\n"
-    success_msg+="1. Review the installation\n"
-    success_msg+="2. Unmount: umount -R /mnt\n"
-    success_msg+="3. Reboot: reboot\n\n"
-    success_msg+="Remove the installation media and boot into your new Arch Linux system!"
+    success_msg+="The system is ready to boot.\n"
+    success_msg+="Remove the installation media before rebooting."
     
-    wt_msgbox "Installation Complete" "$success_msg" 20 75
+    wt_msgbox "Installation Complete" "$success_msg" 18 75
+    
+    # Ask user if they want to reboot now
+    if wt_yesno "Reboot System" "Would you like to reboot now?\n\nMake sure to remove the installation media." 10 60; then
+        log_step "Rebooting system..."
+        sleep 2
+        reboot
+    else
+        wt_msgbox "Manual Reboot" "Remember to reboot your system when ready:\n\n  reboot\n\nRemove the installation media before rebooting." 12 60
+    fi
 }
 
 # --- Entry Point -------------------------------------------------------------
