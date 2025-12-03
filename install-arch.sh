@@ -309,8 +309,7 @@ select_filesystem() {
     local fs_choice
     fs_choice=$(wt_menu "Filesystem Type" "Select the root filesystem type:" 15 70 4 \
         "1" "ext4 - Traditional Linux filesystem (recommended)" \
-        "2" "btrfs - Modern CoW filesystem with snapshots" \
-        3>&1 1>&2 2>&3)
+        "2" "btrfs - Modern CoW filesystem with snapshots")
     
     case "$fs_choice" in
         1) INSTALL_FILESYSTEM="ext4" ;;
@@ -325,8 +324,7 @@ select_layout() {
         "1" "Single partition - Simple root partition only" \
         "2" "LVM - Logical Volume Management for flexibility" \
         "3" "LVM with separate /home - Split root and home volumes" \
-        "4" "Btrfs subvolumes - Btrfs with @, @home, etc." \
-        3>&1 1>&2 2>&3)
+        "4" "Btrfs subvolumes - Btrfs with @, @home, etc.")
     
     case "$layout_choice" in
         1)
@@ -397,7 +395,7 @@ configure_system_settings() {
         "4" "Pacific" \
         "5" "Africa" \
         "6" "UTC (default)" \
-        3>&1 1>&2 2>&3)
+)
     
     case "$tz_choice" in
         1) INSTALL_TIMEZONE="America/New_York" ;;
@@ -417,7 +415,7 @@ configure_system_settings() {
         "4" "fr_FR.UTF-8 (French)" \
         "5" "es_ES.UTF-8 (Spanish)" \
         "6" "ja_JP.UTF-8 (Japanese)" \
-        3>&1 1>&2 2>&3)
+)
     
     case "$locale_choice" in
         1) INSTALL_LOCALE="en_US.UTF-8" ;;
@@ -437,7 +435,7 @@ configure_system_settings() {
         "3" "de (German)" \
         "4" "fr (French)" \
         "5" "es (Spanish)" \
-        3>&1 1>&2 2>&3)
+)
     
     case "$keymap_choice" in
         1) INSTALL_KEYMAP="us" ;;
@@ -507,7 +505,7 @@ select_desktop() {
         "lxqt" "LXQt - Lightweight Qt desktop" \
         "sway" "Sway - Tiling Wayland compositor" \
         "i3" "i3 - Tiling window manager" \
-        3>&1 1>&2 2>&3)
+)
     
     INSTALL_DESKTOP_CHOICE="${desktop_choice:-none}"
 }
@@ -794,12 +792,7 @@ install_base_system() {
     
     packages+=(nano vim git sudo)
     
-    pacstrap -K /mnt "${packages[@]}" 2>&1 | \
-        stdbuf -oL tr '\r' '\n' | \
-        grep -v "^$" | \
-        while IFS= read -r line; do
-            echo "# Installing packages... $line" >&2
-        done
+    pacstrap -K /mnt "${packages[@]}" >/dev/null 2>&1
 }
 
 generate_fstab() {
@@ -920,7 +913,7 @@ EOF
             arch-chroot /mnt sed -i 's/^#\?GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' /etc/default/grub
             arch-chroot /mnt sed -i "/^GRUB_CMDLINE_LINUX=/ s/\"$/ cryptdevice=UUID=${CRYPT_UUID}:${INSTALL_LUKS_NAME}\"/" /etc/default/grub
         fi
-        arch-chroot /mnt grub-install --target=i386-pc "${TARGET_DISK}"
+        arch-chroot /mnt grub-install --target=i386-pc "${INSTALL_DISK}"
         arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
     fi
 }
@@ -937,10 +930,7 @@ install_desktop() {
     cp "$desktop_script" "/mnt${target_path}"
     chmod +x "/mnt${target_path}"
     
-    arch-chroot /mnt env "DESKTOP_ENV=${INSTALL_DESKTOP_CHOICE}" "$target_path" 2>&1 | \
-        while IFS= read -r line; do
-            echo "# Desktop: $line" >&2
-        done
+    arch-chroot /mnt env "DESKTOP_ENV=${INSTALL_DESKTOP_CHOICE}" "$target_path" >/dev/null 2>&1
 }
 
 run_bundle() {
@@ -955,10 +945,7 @@ run_bundle() {
     cp "$bundle_script" "/mnt${target_path}"
     chmod +x "/mnt${target_path}"
     
-    arch-chroot /mnt "$target_path" 2>&1 | \
-        while IFS= read -r line; do
-            echo "# Bundle: $line" >&2
-        done
+    arch-chroot /mnt "$target_path" >/dev/null 2>&1
 }
 
 cleanup() {
