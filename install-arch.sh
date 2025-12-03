@@ -50,6 +50,10 @@ IFS=$'\n\t'
 : "${INSTALL_DESKTOP_EXTRAS:=}"                 # Extra packages passed to the desktop script.
 : "${INSTALL_POST_SCRIPT:=}"                   # Optional post-install provisioning script.
 : "${INSTALL_POST_SCRIPT_ARGS:=}"              # Space-delimited args for the provisioning script.
+: "${INSTALL_BUNDLE_DIR:=bundles}"             # Directory containing bundle scripts.
+: "${INSTALL_BUNDLE_PROMPT:=false}"            # Prompt to choose a bundle when available.
+: "${INSTALL_BUNDLE_CHOICE:=}"                 # Pre-select bundle by name or number.
+: "${INSTALL_BUNDLE_ARGS:=}"                   # Args for the selected bundle when post-script args are unset.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCH_MIRROR="https://mirror.rackspace.com/archlinux"
@@ -236,6 +240,23 @@ resolve_post_install_script() {
   echo ""
 }
 
+resolve_bundle_dir() {
+  local dir="$INSTALL_BUNDLE_DIR"
+  if [[ -z $dir ]]; then
+    echo ""
+    return
+  fi
+  if [[ -d $dir ]]; then
+    printf '%s\n' "$dir"
+    return
+  fi
+  if [[ -d "$SCRIPT_DIR/$dir" ]]; then
+    printf '%s\n' "$SCRIPT_DIR/$dir"
+    return
+  fi
+  echo ""
+}
+
 maybe_install_desktop() {
   local choice="${INSTALL_DESKTOP_CHOICE,,}"
   if [[ -z $choice ]] && is_true "$INSTALL_DESKTOP_PROMPT"; then
@@ -295,6 +316,62 @@ run_post_install_script() {
   if ! arch-chroot /mnt "$target_path" "${args[@]}"; then
     log_error "Post-install script failed (path: ${script_path})."
   fi
+}
+
+select_bundle_script() {
+  [[ -z $INSTALL_POST_SCRIPT ]] || return
+  local dir
+  dir=$(resolve_bundle_dir)
+  [[ -n $dir ]] || return
+  local -a bundle_paths
+  mapfile -t bundle_paths < <(find "$dir" -maxdepth 1 -type f -name '*.sh' -print 2>/dev/null | sort)
+  local count=${#bundle_paths[@]}
+  [[ $count -gt 0 ]] || return
+
+  local choice="$INSTALL_BUNDLE_CHOICE"
+  if [[ -z $choice ]]; then
+    if ! is_true "$INSTALL_BUNDLE_PROMPT"; then
+      return
+    fi
+    log_step "Available bundle scripts"
+    local idx
+    for idx in "${!bundle_paths[@]}"; do
+      log_info "$((idx + 1)). $(basename "${bundle_paths[$idx]}")"
+    done
+    read -r -p "Select bundle (name/number/none) [none]: " choice || true
+  fi
+  choice=${choice:-none}
+  if [[ ${choice,,} == none ]]; then
+    return
+  fi
+
+  local selected=""
+  if [[ $choice =~ ^[0-9]+$ ]]; then
+    local num=$((choice - 1))
+    if (( num >= 0 && num < count )); then
+      selected="${bundle_paths[$num]}"
+    fi
+  fi
+  if [[ -z $selected ]]; then
+    local lowered_choice=${choice,,}
+    local path
+    for path in "${bundle_paths[@]}"; do
+      local base=$(basename "$path")
+      if [[ ${base,,} == $lowered_choice ]]; then
+        selected="$path"
+        break
+      fi
+    done
+  fi
+  if [[ -z $selected ]]; then
+    log_error "Bundle selection '${choice}' not found under ${dir}."
+    return
+  fi
+  INSTALL_POST_SCRIPT="$selected"
+  if [[ -z ${INSTALL_POST_SCRIPT_ARGS// /} && -n ${INSTALL_BUNDLE_ARGS// /} ]]; then
+    INSTALL_POST_SCRIPT_ARGS="$INSTALL_BUNDLE_ARGS"
+  fi
+  log_info "Selected bundle script: $(basename "$selected")"
 }
 
 validate_storage_inputs() {
@@ -908,6 +985,7 @@ main() {
   setup_swapfile
   setup_bootloader
   maybe_install_desktop
+  select_bundle_script
   run_post_install_script
   post_install_summary
 }

@@ -66,6 +66,17 @@ By default the installer inspects `/sys/firmware/efi` to decide whether to treat
 
 Set `INSTALL_POST_SCRIPT` to a shell script on the live system (absolute path or relative to the installer directory) to have it copied into the new installation and executed via `arch-chroot /mnt`. Provide additional arguments with `INSTALL_POST_SCRIPT_ARGS="arg1 arg2"`. The script runs after optional desktop installation, so you can use it for dotfiles, service enablement, language runtime installs, etc. If the file cannot be found, the installer logs an error but continues.
 
+For reusable “bundles”, drop one or more shell scripts into a directory (default `bundles/` next to `install-arch.sh`) and either set `INSTALL_BUNDLE_CHOICE` to the bundle’s filename (or number) or enable `INSTALL_BUNDLE_PROMPT=true` to be asked during the run. Selecting a bundle automatically wires its script into the post-install hook, and you can feed it arguments via `INSTALL_BUNDLE_ARGS` (falls back to `INSTALL_POST_SCRIPT_ARGS` when already set).
+
+Starter bundles included in this repo:
+
+- `dev.sh` – toolchains, editors, language runtimes, Docker/Podman.
+- `desktop-utilities.sh` – browsers, media players, office suite, printing.
+- `gaming.sh` – Steam, Lutris, Wine, Gamemode, MangoHUD.
+- `server.sh` – SSH hardening, firewall, cockpit, node exporter.
+- `cloud.sh` – kubectl/helm/terraform plus major cloud CLIs.
+- `creative.sh` – graphics/audio/video production apps.
+
 ## Network bootstrapping
 
 Set `NETWORK_BOOTSTRAP_ENABLE=true` when running from the ISO if you want the script to bring the link up via `nmcli` before it checks connectivity. Supported profiles:
@@ -110,6 +121,10 @@ Leave `NETWORK_BOOTSTRAP_ENABLE=false` when you prefer to configure networking m
 | `INSTALL_DESKTOP_EXTRAS` | Extra packages passed to `install-desktop.sh`. | *empty* |
 | `INSTALL_POST_SCRIPT` | Path to a post-install provisioning script executed inside the chroot. | *empty* |
 | `INSTALL_POST_SCRIPT_ARGS` | Arguments passed to the provisioning script. | *empty* |
+| `INSTALL_BUNDLE_DIR` | Directory scanned for bundle scripts when selecting post-install automation. | `bundles` |
+| `INSTALL_BUNDLE_PROMPT` | `true` to ask which bundle to run (if `INSTALL_POST_SCRIPT` is unset). | `false` |
+| `INSTALL_BUNDLE_CHOICE` | Preselect bundle by name or number (from the prompt listing). | *empty* |
+| `INSTALL_BUNDLE_ARGS` | Arguments supplied to the chosen bundle when `INSTALL_POST_SCRIPT_ARGS` is empty. | *empty* |
 
 Adjust the functions in `install-arch.sh` if you need LVM, Btrfs, custom partitioning, or different bootloader behavior—the script is structured so each concern stays isolated.
 
