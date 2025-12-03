@@ -1046,8 +1046,8 @@ setup_swapfile() {
     if [[ $INSTALL_FILESYSTEM == "btrfs" ]]; then
         arch-chroot /mnt truncate -s 0 /swapfile
         arch-chroot /mnt chattr +C /swapfile
-        arch-chroot /mnt fallocate -l "${size_gb}G" /swapfile
         arch-chroot /mnt btrfs property set /swapfile compression none
+        arch-chroot /mnt fallocate -l "${size_gb}G" /swapfile
     else
         arch-chroot /mnt fallocate -l "${size_gb}G" /swapfile
     fi
