@@ -952,10 +952,15 @@ configure_system() {
     arch-chroot /mnt hwclock --systohc || log_info "hwclock failed (normal in VMs/containers)"
     
     # Locale
-    if ! grep -q "^${INSTALL_LOCALE}" /mnt/etc/locale.gen; then
-        echo "${INSTALL_LOCALE} UTF-8" >> /mnt/etc/locale.gen
-    else
-        sed -i "s/^#${INSTALL_LOCALE}/${INSTALL_LOCALE}/" /mnt/etc/locale.gen
+    # Check if locale is already uncommented
+    if ! grep -q "^${INSTALL_LOCALE} " /mnt/etc/locale.gen; then
+        # Try to uncomment the locale if it exists as a commented line
+        if grep -q "^#${INSTALL_LOCALE} " /mnt/etc/locale.gen; then
+            sed -i "s/^#${INSTALL_LOCALE} /${INSTALL_LOCALE} /" /mnt/etc/locale.gen
+        else
+            # Locale doesn't exist at all, add it
+            echo "${INSTALL_LOCALE} UTF-8" >> /mnt/etc/locale.gen
+        fi
     fi
     arch-chroot /mnt locale-gen >/dev/null 2>&1
     echo "LANG=${INSTALL_LOCALE}" > /mnt/etc/locale.conf
