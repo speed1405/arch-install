@@ -389,22 +389,32 @@ configure_system_settings() {
     
     # Timezone selection
     local tz_choice
-    tz_choice=$(wt_menu "Timezone" "Select your timezone region:" 20 70 10 \
-        "1" "America" \
-        "2" "Europe" \
-        "3" "Asia" \
-        "4" "Pacific" \
-        "5" "Africa" \
-        "6" "UTC (default)" \
+    tz_choice=$(wt_menu "Timezone" "Select your timezone region:" 22 70 11 \
+        "1" "America/New_York (US East)" \
+        "2" "America/Los_Angeles (US West)" \
+        "3" "Europe/London (UK)" \
+        "4" "Europe/Paris (Central Europe)" \
+        "5" "Asia/Tokyo (Japan)" \
+        "6" "Asia/Shanghai (China)" \
+        "7" "Australia/Sydney (Australia East)" \
+        "8" "Australia/Perth (Australia West)" \
+        "9" "Pacific/Auckland (New Zealand)" \
+        "10" "Africa/Cairo (Egypt)" \
+        "11" "UTC (default)" \
 )
     
     case "$tz_choice" in
         1) INSTALL_TIMEZONE="America/New_York" ;;
-        2) INSTALL_TIMEZONE="Europe/London" ;;
-        3) INSTALL_TIMEZONE="Asia/Tokyo" ;;
-        4) INSTALL_TIMEZONE="Pacific/Auckland" ;;
-        5) INSTALL_TIMEZONE="Africa/Cairo" ;;
-        6|*) INSTALL_TIMEZONE="UTC" ;;
+        2) INSTALL_TIMEZONE="America/Los_Angeles" ;;
+        3) INSTALL_TIMEZONE="Europe/London" ;;
+        4) INSTALL_TIMEZONE="Europe/Paris" ;;
+        5) INSTALL_TIMEZONE="Asia/Tokyo" ;;
+        6) INSTALL_TIMEZONE="Asia/Shanghai" ;;
+        7) INSTALL_TIMEZONE="Australia/Sydney" ;;
+        8) INSTALL_TIMEZONE="Australia/Perth" ;;
+        9) INSTALL_TIMEZONE="Pacific/Auckland" ;;
+        10) INSTALL_TIMEZONE="Africa/Cairo" ;;
+        11|*) INSTALL_TIMEZONE="UTC" ;;
     esac
     
     # Locale selection
@@ -939,7 +949,7 @@ configure_system() {
     
     # Timezone
     arch-chroot /mnt ln -sf "/usr/share/zoneinfo/${INSTALL_TIMEZONE}" /etc/localtime
-    arch-chroot /mnt hwclock --systohc
+    arch-chroot /mnt hwclock --systohc || log_info "hwclock failed (normal in VMs/containers)"
     
     # Locale
     if ! grep -q "^${INSTALL_LOCALE}" /mnt/etc/locale.gen; then
