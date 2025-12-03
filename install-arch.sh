@@ -800,7 +800,7 @@ prepare_btrfs_subvolumes() {
     mount "$ROOT_DEVICE" /mnt || fail "Failed to mount $ROOT_DEVICE for subvolume creation"
     
     # Create subvolumes with error checking
-    local subvol entry
+    local subvol entry subvol_entries
     IFS=' ' read -ra subvol_entries <<< "$BTRFS_SUBVOLUMES"
     for entry in "${subvol_entries[@]}"; do
         subvol="${entry%%:*}"
@@ -808,7 +808,7 @@ prepare_btrfs_subvolumes() {
             if ! btrfs subvolume create "/mnt/${subvol}" >/dev/null 2>&1; then
                 # Attempt cleanup before failing (cleanup failure is non-critical since we're already failing)
                 if ! umount /mnt 2>/dev/null; then
-                    log_error "Warning: Failed to unmount /mnt during error cleanup"
+                    log_error "Failed to unmount /mnt during error cleanup"
                 fi
                 fail "Failed to create Btrfs subvolume: ${subvol}"
             fi
