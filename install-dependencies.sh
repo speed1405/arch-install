@@ -51,6 +51,7 @@ check_python() {
 install_python() {
     log_info "Installing Python 3..."
     local output
+    # Use -S (not -Sy) since database was already refreshed in update_package_database()
     if output=$(pacman -S --noconfirm python 2>&1); then
         log_info "Python 3 installed successfully."
         return 0
@@ -123,8 +124,10 @@ check_python_dialog() {
 install_python_dialog() {
     log_info "Installing pythondialog library via pip..."
     local output
-    # --break-system-packages is required in the Arch ISO live environment
-    # This is safe because we're in a temporary environment with no system packages to break
+    # --break-system-packages is required in Arch ISO live environment because:
+    # 1. Newer pip versions (PEP 668) prevent system-wide installations by default
+    # 2. This protects against conflicts with system package managers
+    # 3. Safe in the live ISO since it's a temporary, isolated environment
     if output=$(python3 -m pip install --break-system-packages pythondialog 2>&1); then
         log_info "pythondialog library installed successfully."
         return 0
@@ -163,6 +166,8 @@ verify_gui_files() {
 update_package_database() {
     log_info "Updating package database..."
     local output
+    # Refresh package database once at startup with -Sy
+    # Individual package installations use -S (no refresh) to avoid redundant syncs
     if output=$(pacman -Sy 2>&1); then
         log_info "Package database updated."
     else
