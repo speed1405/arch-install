@@ -23,27 +23,14 @@ class InstallerGUI:
         """Initialize the TUI with dialog library and enhanced settings."""
         self.d = Dialog(dialog="dialog", autowidgetsize=True)
         self.d.set_background_title(backtitle)
-        
-        # Enable colors and enhanced TUI features
-        # Dialog supports these through environment variables and options
-        self.use_colors = True
-        self.use_shadow = True
     
     def msgbox(self, title: str, message: str, height: int = 10, width: int = 60) -> int:
         """
         Display a message box with enhanced TUI formatting.
         Returns Dialog.OK on success, Dialog.ESC if user presses ESC.
         """
-        # Add visual separator for better readability
-        formatted_message = self._format_message(message)
-        code = self.d.msgbox(formatted_message, height=height, width=width, title=title)
+        code = self.d.msgbox(message, height=height, width=width, title=title)
         return code
-    
-    def _format_message(self, message: str) -> str:
-        """Format message with TUI box drawing characters for better visual appeal."""
-        # Add extra newline spacing for readability in TUI
-        # This makes the text more pleasant to read
-        return message
     
     def yesno(self, title: str, message: str, height: int = 10, width: int = 60) -> bool:
         """Display a yes/no dialog. Returns True for yes, False for no."""
@@ -116,11 +103,11 @@ class InstallerGUI:
     
     def _format_progress_message(self, message: str, percent: int = 0) -> str:
         """
-        Format progress message with percentage indicator.
-        Adds visual enhancement to progress text.
+        Format progress message for gauge display.
+        Returns the message as-is for display in progress gauge.
         """
         if message:
-            return f"{message}"
+            return message
         return f"Progress: {percent}%"
     
     def mixedgauge(self, title: str, message: str, height: int = 0, width: int = 0, 

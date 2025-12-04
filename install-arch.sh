@@ -1343,7 +1343,7 @@ main() {
         echo "Installing base system..."
         echo "This will take several minutes - downloading and installing packages"
         echo "XXX"
-        install_base_system 2>&1 | grep -v "warning:" | tail -20 || true
+        install_base_system 2>&1 >/dev/null || true
         
         echo "60" ; echo "XXX"
         echo "Generating fstab..."
@@ -1374,7 +1374,7 @@ main() {
             echo "Installing desktop environment..."
             echo "Setting up ${INSTALL_DESKTOP_CHOICE} desktop"
             echo "XXX"
-            install_desktop 2>&1 | tail -10 || true
+            install_desktop 2>&1 >/dev/null || true
         fi
         
         if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
@@ -1382,7 +1382,7 @@ main() {
             echo "Running post-install bundles..."
             echo "Installing ${#INSTALL_BUNDLE_CHOICES[@]} additional software bundle(s)"
             echo "XXX"
-            run_bundles 2>&1 | tail -10 || true
+            run_bundles 2>&1 >/dev/null || true
         fi
         
         echo "100" ; echo "XXX"
