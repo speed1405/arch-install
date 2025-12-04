@@ -1,6 +1,31 @@
-# Arch Linux Installer with Whiptail GUI
+# Arch Linux Installer with Dialog/Whiptail GUI
 
-`install-arch.sh` is a modern, user-friendly installer built from scratch with a Whiptail-based GUI (Graphical User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress bars. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a dialog-based GUI (Graphical User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress bars. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+
+## GUI Type Options
+
+The installer supports two GUI types:
+
+- **dialog** - Enhanced TUI with better visuals, colors, and shadows (requires installation: `pacman -S dialog`)
+- **whiptail** - Simpler TUI included in Arch ISO by default (no installation needed)
+
+The installer **auto-detects** which GUI to use:
+1. Prefers `dialog` if available (better aesthetics and features)
+2. Falls back to `whiptail` (always available in Arch ISO)
+
+You can force a specific GUI type by setting the environment variable:
+```bash
+# Force dialog (if installed)
+INSTALLER_GUI_TYPE=dialog ./install-arch.sh
+
+# Force whiptail (default in Arch ISO)
+INSTALLER_GUI_TYPE=whiptail ./install-arch.sh
+
+# Auto-detect (default)
+INSTALLER_GUI_TYPE=auto ./install-arch.sh
+# or simply:
+./install-arch.sh
+```
 
 ## GUI Screenshots
 
@@ -8,7 +33,7 @@
 
 ## What the Installer Does
 
-The installer uses a Whiptail-based GUI (included in Arch ISO by default) to provide a friendly, text-based installation experience with progress indicators:
+The installer uses a dialog-based GUI (whiptail or dialog) to provide a friendly, text-based installation experience with progress indicators:
 
 1. **Welcome Screen** - Introduces the installer and its features
 2. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
@@ -29,7 +54,7 @@ The installer uses a Whiptail-based GUI (included in Arch ISO by default) to pro
 13. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
 14. **Completion** - Success message with next steps
 
-All user interaction happens through Whiptail GUI dialogs with progress bars, making the installation process intuitive and providing clear feedback on progress.
+All user interaction happens through dialog-based GUI menus with progress bars, making the installation process intuitive and providing clear feedback on progress.
 
 ## Usage
 
@@ -78,7 +103,7 @@ The installer is fully interactive through Whiptail GUI dialogs - no manual conf
 
 ## Interactive GUI Features
 
-The Whiptail-based GUI interface provides:
+The dialog-based GUI interface provides:
 
 - **Menu Navigation**: Arrow keys to select, Enter to confirm, Esc to cancel
 - **Input Boxes**: Text entry for hostnames, usernames, etc.
@@ -86,10 +111,11 @@ The Whiptail-based GUI interface provides:
 - **Yes/No Dialogs**: Clear confirmation prompts
 - **Checklists**: Multi-select for software bundles
 - **Progress Gauge**: Real-time installation progress with detailed status messages
-- **Enhanced Visual Design**: Clean GUI aesthetics with better readability
+- **Enhanced Visual Design**: Clean GUI aesthetics with better readability (especially with dialog)
+- **Color Support**: Enhanced colors and styling when using dialog
 - **Info Boxes**: Quick status updates during operations
 
-All menus use Whiptail, which is included in Arch ISO by default and works in any terminal.
+The GUI works in any terminal and requires no external dependencies (whiptail is included in Arch ISO).
 
 ## Storage Options
 
@@ -169,14 +195,19 @@ The installer requires:
 - Network connectivity (checked automatically)
 - Root privileges
 
-The only GUI dependency is **whiptail**, which is **already included** in the Arch ISO by default - no additional installation needed!
+**GUI Dependencies** (at least one required):
+- **whiptail** - Included in Arch ISO by default (always available)
+- **dialog** - Optional, better visuals (install with `pacman -S dialog`)
+
+The installer auto-detects which GUI is available and uses the best option.
 
 All other required tools (lsblk, parted, mkfs, cryptsetup, etc.) are checked automatically at startup.
 
 ## Technical Details
 
 - Written in Bash with strict error handling (`set -euo pipefail`)
-- Whiptail-based GUI (included in Arch ISO by default - no additional dependencies)
+- Dialog-based GUI with support for both whiptail and dialog utilities
+- Auto-detects best available GUI (dialog preferred, whiptail fallback)
 - Modular design with separate functions for each installation stage
 - Automatic hardware detection (CPU vendor, GPU, memory, virtualization)
 - Supports both UEFI and BIOS/Legacy boot modes
