@@ -1,39 +1,29 @@
-# Arch Linux Installer with Dialog/Whiptail TUI
+# Arch Linux Installer with Gum TUI
 
-`install-arch.sh` is a modern, user-friendly installer built from scratch with a dialog-based TUI (Text User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress bars. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a gum-based TUI (Text User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress indicators. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
 
-## TUI Type Options
+## TUI Tool
 
-The installer supports two TUI types:
+The installer uses **gum** - a modern, glamorous TUI tool for shell scripts:
 
-- **dialog** - Enhanced TUI with better visuals, colors, and shadows (requires installation: `pacman -S dialog`)
-- **whiptail** - Simpler TUI included in Arch ISO by default (no installation needed)
+- **gum** - Beautiful TUI with colors, styles, and interactive components (install from Arch repos: `pacman -S gum`)
 
-The installer **auto-detects** which TUI to use:
-1. Prefers `dialog` if available (better aesthetics and features)
-2. Falls back to `whiptail` (always available in Arch ISO)
+Gum provides an enhanced user experience with:
+- Colorful, styled prompts and menus
+- Interactive input fields with placeholders
+- Multi-select checklists
+- Progress indicators
+- Better keyboard navigation
 
-You can force a specific TUI type by setting the environment variable:
-```bash
-# Use dialog (if installed)
-INSTALLER_GUI_TYPE=dialog ./install-arch.sh
+The installer will check for gum at startup and guide you to install it if needed.
 
-# Use whiptail (default in Arch ISO)
-INSTALLER_GUI_TYPE=whiptail ./install-arch.sh
+## TUI Screenshots
 
-# Auto-detect (default)
-INSTALLER_GUI_TYPE=auto ./install-arch.sh
-# or simply:
-./install-arch.sh
-```
-
-## GUI Screenshots
-
-📸 **See the GUI in action!** View example screenshots of all dialog types in [GUI-SCREENSHOTS.md](GUI-SCREENSHOTS.md) or check the [screenshots/](screenshots/) directory.
+📸 **See the TUI in action!** View example screenshots of all dialog types in [GUI-SCREENSHOTS.md](GUI-SCREENSHOTS.md) or check the [screenshots/](screenshots/) directory.
 
 ## What the Installer Does
 
-The installer uses a dialog-based GUI (whiptail or dialog) to provide a friendly, text-based installation experience with progress indicators:
+The installer uses a gum-based TUI to provide a friendly, text-based installation experience with progress indicators:
 
 1. **Welcome Screen** - Introduces the installer and its features
 2. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
@@ -54,7 +44,7 @@ The installer uses a dialog-based GUI (whiptail or dialog) to provide a friendly
 13. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
 14. **Completion** - Success message with next steps
 
-All user interaction happens through dialog-based GUI menus with progress bars, making the installation process intuitive and providing clear feedback on progress.
+All user interaction happens through gum TUI menus with progress indicators, making the installation process intuitive and providing clear feedback on progress.
 
 ## Usage
 
@@ -82,9 +72,9 @@ All user interaction happens through dialog-based GUI menus with progress bars, 
    ./install-arch.sh
    ```
 
-   The installer will automatically verify that all required tools are available (whiptail is included in Arch ISO by default).
+   The installer will automatically verify that gum is available (install with `pacman -S gum` if needed).
 
-5. Follow the GUI prompts:
+5. Follow the TUI prompts:
    - Select your installation disk
    - Choose filesystem and layout options
    - Configure encryption if desired
@@ -99,27 +89,26 @@ All user interaction happens through dialog-based GUI menus with progress bars, 
 
 8. Reboot into your new Arch Linux system!
 
-The installer is fully interactive through Whiptail GUI dialogs - no manual configuration needed.
+The installer is fully interactive through gum TUI dialogs - no manual configuration needed.
 
-## Interactive GUI Features
+## Interactive TUI Features
 
-The dialog-based GUI interface provides:
+The gum-based TUI interface provides:
 
-- **Menu Navigation**: Arrow keys to select, Enter to confirm, Esc to cancel
-- **Input Boxes**: Text entry for hostnames, usernames, etc.
-- **Password Boxes**: Secure password entry (hidden characters)
-- **Yes/No Dialogs**: Clear confirmation prompts
-- **Checklists**: Multi-select for software bundles
-- **Progress Gauge**: Real-time installation progress with detailed status messages
-- **Enhanced Visual Design**: Clean GUI aesthetics with better readability (especially with dialog)
-- **Color Support**: Enhanced colors and styling when using dialog
-- **Info Boxes**: Quick status updates during operations
+- **Menu Navigation**: Arrow keys to select, Enter to confirm
+- **Input Fields**: Text entry with placeholders for hostnames, usernames, etc.
+- **Password Fields**: Secure password entry (hidden characters)
+- **Confirmation Prompts**: Clear yes/no dialogs
+- **Multi-Select Lists**: Interactive checklists for software bundles
+- **Progress Indicators**: Real-time installation progress with status messages
+- **Modern Styling**: Clean TUI aesthetics with colors and better readability
+- **Styled Output**: Enhanced colors and formatting throughout
 
-The GUI works in any terminal and requires no external dependencies (whiptail is included in Arch ISO).
+The TUI works in any terminal and provides a beautiful, modern interface for the installation process.
 
 ## Storage Options
 
-The installer provides interactive whiptail menus for all storage configuration:
+The installer provides interactive gum TUI menus for all storage configuration:
 
 ### Filesystem Types
 - **ext4**: Traditional, stable Linux filesystem (recommended for most users)
@@ -133,7 +122,7 @@ The installer provides interactive whiptail menus for all storage configuration:
 
 ### Disk Encryption
 - Optional LUKS encryption for root partition
-- Secure passphrase entry through whiptail password boxes
+- Secure passphrase entry through gum password prompts
 - Confirmation prompt to prevent typos
 
 ### Boot Modes
@@ -177,16 +166,16 @@ Optional post-install bundles available:
 - **networking.sh** - Network tools (Wireshark, nmap, mtr, iftop, NetworkManager)
 - **sysadmin.sh** - System administration (monitoring, backup tools, disk utilities, maintenance scripts)
 
-Bundles can be selected via whiptail checklist during installation or run manually afterward. See **FEATURE-SUGGESTIONS.md** for even more enhancement ideas.
+Bundles can be selected via gum TUI checklist during installation or run manually afterward. See **FEATURE-SUGGESTIONS.md** for even more enhancement ideas.
 
 ## Safety Notes
 
 - The installer **completely erases** the selected disk - double-check your selection!
 - All sensitive operations (disk erase, encryption setup) require explicit confirmation
-- Passwords are entered through secure Python GUI password boxes (hidden input)
+- Passwords are entered through secure gum password prompts (hidden input)
 - Hardware detection runs automatically to select appropriate drivers and microcode
 - The installer validates network connectivity before proceeding
-- Progress is shown in real-time with a progress gauge
+- Progress is shown in real-time with progress indicators
 
 ## Requirements
 
@@ -195,19 +184,15 @@ The installer requires:
 - Network connectivity (checked automatically)
 - Root privileges
 
-**GUI Dependencies** (at least one required):
-- **whiptail** - Included in Arch ISO by default (always available)
-- **dialog** - Optional, better visuals (install with `pacman -S dialog`)
-
-The installer auto-detects which GUI is available and uses the best option.
+**TUI Dependencies**:
+- **gum** - Modern TUI tool (install from Arch repos with `pacman -S gum`)
 
 All other required tools (lsblk, parted, mkfs, cryptsetup, etc.) are checked automatically at startup.
 
 ## Technical Details
 
 - Written in Bash with strict error handling (`set -euo pipefail`)
-- Dialog-based GUI with support for both whiptail and dialog utilities
-- Auto-detects best available GUI (dialog preferred, whiptail fallback)
+- Modern gum-based TUI with beautiful, colorful interface
 - Modular design with separate functions for each installation stage
 - Automatic hardware detection (CPU vendor, GPU, memory, virtualization)
 - Supports both UEFI and BIOS/Legacy boot modes
