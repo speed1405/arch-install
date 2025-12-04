@@ -9,7 +9,7 @@ IFS=$'\n\t'
 # --- Global Configuration Variables ------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_VERSION="2.0.0"
-BACKTITLE="Arch Linux Installer v${SCRIPT_VERSION}"
+BACKTITLE="Arch Linux Installer v${SCRIPT_VERSION} - TUI Mode"
 
 # Installation configuration (populated by GUI)
 INSTALL_DISK=""
@@ -72,7 +72,8 @@ wt_msgbox() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" msgbox "$title" "$message" "$height" "$width"
+    # Don't fail on ESC - allow users to cancel informational dialogs
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" msgbox "$title" "$message" "$height" "$width" || return 1
 }
 
 wt_yesno() {
@@ -120,6 +121,26 @@ wt_checklist() {
     python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" checklist "$title" "$message" "$height" "$width" "$list_height" "$@"
 }
 
+wt_infobox() {
+    # New TUI function: Display info without waiting for user input
+    local title="$1"
+    local message="$2"
+    local height="${3:-10}"
+    local width="${4:-60}"
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" infobox "$title" "$message" "$height" "$width" || true
+}
+
+wt_mixedgauge() {
+    # New TUI function: Display multiple progress bars
+    local title="$1"
+    local message="$2"
+    local height="$3"
+    local width="$4"
+    local percent="$5"
+    shift 5
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" mixedgauge "$title" "$message" "$height" "$width" "$percent" "$@" || true
+}
+
 wt_gauge() {
     # Note: gauge uses dialog directly (not Python wrapper) because it expects
     # piped input for real-time progress updates (e.g., "echo 50" followed by "echo XXX" and message)
@@ -128,7 +149,7 @@ wt_gauge() {
     local message="$2"
     local height="${3:-8}"
     local width="${4:-60}"
-    dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
+    DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
 }
 
 # --- Logging Functions -------------------------------------------------------
@@ -238,16 +259,21 @@ get_disks() {
 # --- GUI Workflow Functions --------------------------------------------------
 show_welcome() {
     local message="Welcome to the Arch Linux Installer!\n\n"
-    message+="This installer will guide you through setting up Arch Linux with a Python-based graphical interface.\n\n"
+    message+="This installer will guide you through setting up Arch Linux with an enhanced TUI (Text User Interface).\n\n"
     message+="Features:\n"
     message+="• Hardware auto-detection\n"
     message+="• Multiple filesystem options (ext4, Btrfs)\n"
     message+="• Optional LVM and LUKS encryption\n"
     message+="• Desktop environment selection\n"
-    message+="• Post-install bundle options\n\n"
+    message+="• Post-install bundle options\n"
+    message+="• Progress indicators throughout installation\n\n"
     message+="Press OK to begin."
     
-    wt_msgbox "Welcome" "$message" 20 70
+    # Allow user to cancel - if they do, exit gracefully
+    if ! wt_msgbox "Welcome" "$message" 20 70; then
+        log_info "Installation cancelled by user at welcome screen."
+        exit 0
+    fi
 }
 
 show_hardware_summary() {
@@ -273,7 +299,16 @@ show_hardware_summary() {
     message+="Virtualization: ${virt_info}\n\n"
     message+="Press OK to continue with disk selection."
     
-    wt_msgbox "Hardware Summary" "$message" 18 75
+    # Allow cancellation on informational dialogs - don't exit if user presses ESC
+    if ! wt_msgbox "Hardware Summary" "$message" 18 75; then
+        # User cancelled - ask if they want to exit
+        if wt_yesno "Exit Installer?" "Do you want to exit the installer?" 10 60; then
+            log_info "Installation cancelled by user at hardware summary."
+            exit 0
+        fi
+        # If they don't want to exit, show the summary again
+        wt_msgbox "Hardware Summary" "$message" 18 75 || true
+    fi
 }
 
 select_disk() {
@@ -1195,10 +1230,10 @@ cleanup() {
 main() {
     require_root
     
-    # Install GUI dependencies first
-    log_step "Installing GUI dependencies..."
+    # Install TUI dependencies first
+    log_step "Installing TUI dependencies..."
     if [[ -f "${SCRIPT_DIR}/install-dependencies.sh" ]]; then
-        bash "${SCRIPT_DIR}/install-dependencies.sh" || fail "Failed to install GUI dependencies"
+        bash "${SCRIPT_DIR}/install-dependencies.sh" || fail "Failed to install TUI dependencies"
     else
         log_error "Dependency installer script not found"
         fail "Please ensure install-dependencies.sh is in the same directory as this script"
@@ -1242,57 +1277,119 @@ main() {
     
     trap cleanup EXIT
     
-    # Installation progress - show on console
+    # Installation progress with enhanced TUI progress bars
     log_step "Starting installation process..."
     
-    echo "0" ; echo "# Partitioning disk..."
-    partition_disk "$TARGET_DISK"
-    
-    echo "5" ; echo "# Formatting boot partition..."
-    format_boot_partition
-    
-    echo "10" ; echo "# Setting up encryption..."
-    setup_luks_container
-    
-    echo "15" ; echo "# Configuring storage..."
-    setup_storage_stack
-    
-    echo "20" ; echo "# Formatting filesystems..."
-    format_filesystems
-    
-    if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
-        echo "25" ; echo "# Preparing Btrfs subvolumes..."
-        prepare_btrfs_subvolumes
-    fi
-    
-    echo "30" ; echo "# Mounting filesystems..."
-    mount_filesystems
-    
-    echo "32" ; echo "# Updating package mirrors..."
-    update_mirrorlist
-    
-    echo "35" ; echo "# Installing base system (this will take several minutes)..."
-    install_base_system
-    
-    echo "60" ; echo "# Generating fstab..."
-    generate_fstab
-    
-    echo "65" ; echo "# Configuring system..."
-    configure_system
-    
-    echo "75" ; echo "# Creating swapfile..."
-    setup_swapfile
-    
-    echo "80" ; echo "# Installing bootloader..."
-    setup_bootloader
-    
-    echo "85" ; echo "# Installing desktop environment..."
-    install_desktop
-    
-    echo "95" ; echo "# Running post-install bundles..."
-    run_bundles
-    
-    echo "100" ; echo "# Installation complete!"
+    (
+        echo "0" ; echo "XXX"
+        echo "Partitioning disk..."
+        echo "Creating partition table and partitions on ${TARGET_DISK}"
+        echo "XXX"
+        partition_disk "$TARGET_DISK"
+        
+        echo "5" ; echo "XXX"
+        echo "Formatting boot partition..."
+        echo "Creating boot filesystem"
+        echo "XXX"
+        format_boot_partition
+        
+        echo "10" ; echo "XXX"
+        echo "Setting up encryption..."
+        if is_true "$INSTALL_USE_LUKS"; then
+            echo "Configuring LUKS encryption for security"
+        else
+            echo "Skipping encryption (not enabled)"
+        fi
+        echo "XXX"
+        setup_luks_container
+        
+        echo "15" ; echo "XXX"
+        echo "Configuring storage..."
+        if is_true "$INSTALL_USE_LVM"; then
+            echo "Setting up LVM volumes"
+        else
+            echo "Using standard partitioning"
+        fi
+        echo "XXX"
+        setup_storage_stack
+        
+        echo "20" ; echo "XXX"
+        echo "Formatting filesystems..."
+        echo "Creating ${INSTALL_FILESYSTEM} filesystem(s)"
+        echo "XXX"
+        format_filesystems
+        
+        if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
+            echo "25" ; echo "XXX"
+            echo "Preparing Btrfs subvolumes..."
+            echo "Creating @, @home, @var_log, @var_cache, @snapshots"
+            echo "XXX"
+            prepare_btrfs_subvolumes
+        fi
+        
+        echo "30" ; echo "XXX"
+        echo "Mounting filesystems..."
+        echo "Mounting all partitions to /mnt"
+        echo "XXX"
+        mount_filesystems
+        
+        echo "32" ; echo "XXX"
+        echo "Updating package mirrors..."
+        echo "Configuring mirrors for ${INSTALL_MIRROR_REGION}"
+        echo "XXX"
+        update_mirrorlist
+        
+        echo "35" ; echo "XXX"
+        echo "Installing base system..."
+        echo "This will take several minutes - downloading and installing packages"
+        echo "XXX"
+        install_base_system 2>&1 | grep -v "warning:" | tail -20 || true
+        
+        echo "60" ; echo "XXX"
+        echo "Generating fstab..."
+        echo "Creating filesystem table configuration"
+        echo "XXX"
+        generate_fstab
+        
+        echo "65" ; echo "XXX"
+        echo "Configuring system..."
+        echo "Setting up timezone, locale, hostname, and users"
+        echo "XXX"
+        configure_system
+        
+        echo "75" ; echo "XXX"
+        echo "Creating swapfile..."
+        echo "Setting up swap space for memory management"
+        echo "XXX"
+        setup_swapfile
+        
+        echo "80" ; echo "XXX"
+        echo "Installing bootloader..."
+        echo "Configuring ${SELECTED_BOOTLOADER} for ${BOOT_MODE^^} mode"
+        echo "XXX"
+        setup_bootloader
+        
+        if [[ $INSTALL_DESKTOP_CHOICE != "none" ]]; then
+            echo "85" ; echo "XXX"
+            echo "Installing desktop environment..."
+            echo "Setting up ${INSTALL_DESKTOP_CHOICE} desktop"
+            echo "XXX"
+            install_desktop 2>&1 | tail -10 || true
+        fi
+        
+        if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
+            echo "95" ; echo "XXX"
+            echo "Running post-install bundles..."
+            echo "Installing ${#INSTALL_BUNDLE_CHOICES[@]} additional software bundle(s)"
+            echo "XXX"
+            run_bundles 2>&1 | tail -10 || true
+        fi
+        
+        echo "100" ; echo "XXX"
+        echo "Installation complete!"
+        echo "All tasks completed successfully"
+        echo "XXX"
+    ) | wt_gauge "Arch Linux Installation Progress" "Initializing..." 12 75
     
     log_step "Installation completed successfully!"
     

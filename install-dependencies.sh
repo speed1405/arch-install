@@ -179,7 +179,7 @@ update_package_database() {
 main() {
     echo ""
     echo "============================================================"
-    echo "  Arch Linux Installer - GUI Dependency Setup"
+    echo "  Arch Linux Installer - TUI Dependency Setup"
     echo "============================================================"
     echo ""
     
@@ -194,25 +194,34 @@ main() {
         exit 1
     fi
     
+    # Total steps for progress calculation
+    local current_step=0
+    local total_steps=5
+    
     # Update package database first
+    log_info "[$(( ++current_step ))/${total_steps}] Updating package database..."
     update_package_database
     
     # Check and install Python if needed
+    log_info "[$(( ++current_step ))/${total_steps}] Checking Python 3..."
     if ! check_python; then
         install_python || exit 1
     fi
     
     # Check and install dialog if needed
+    log_info "[$(( ++current_step ))/${total_steps}] Checking dialog utility..."
     if ! check_dialog; then
         install_dialog || exit 1
     fi
     
     # Check and install pip if needed
+    log_info "[$(( ++current_step ))/${total_steps}] Checking pip..."
     if ! check_pip; then
         install_pip || exit 1
     fi
     
     # Check and install pythondialog if needed
+    log_info "[$(( ++current_step ))/${total_steps}] Checking pythondialog library..."
     if ! check_python_dialog; then
         install_python_dialog || exit 1
     fi
@@ -223,8 +232,8 @@ main() {
     fi
     
     echo ""
-    log_info "All dependencies installed successfully!"
-    log_info "The installer GUI is ready to use."
+    log_info "✓ All ${total_steps} dependency checks completed successfully!"
+    log_info "✓ The installer TUI is ready to use."
     echo ""
     
     return 0

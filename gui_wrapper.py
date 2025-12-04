@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-GUI Wrapper for Arch Linux Installer
-Provides command-line interface to GUI dialogs
-Called from bash script to display GUI elements
+TUI Wrapper for Arch Linux Installer
+Provides command-line interface to TUI dialogs with enhanced visual design
+Called from bash script to display TUI elements with progress bars
 """
 
 import sys
+import os
 from installer_gui import InstallerGUI
 
 # Version constant - should match install-arch.sh SCRIPT_VERSION
-DEFAULT_BACKTITLE = "Arch Linux Installer v2.0.0"
+DEFAULT_BACKTITLE = "Arch Linux Installer v2.0.0 - TUI Mode"
+
+# Enable dialog features for better TUI experience
+os.environ['DIALOGOPTS'] = '--colors --no-shadow'
 
 
 def main():
@@ -139,6 +143,38 @@ def main():
                 sys.exit(0)
             else:
                 sys.exit(1)
+        
+        elif command == "infobox":
+            # gui_wrapper.py infobox <title> <message> [height] [width]
+            title = args[1] if len(args) > 1 else "Information"
+            message = args[2] if len(args) > 2 else ""
+            height = int(args[3]) if len(args) > 3 else 10
+            width = int(args[4]) if len(args) > 4 else 60
+            gui.infobox(title, message, height, width)
+            sys.exit(0)
+        
+        elif command == "mixedgauge":
+            # gui_wrapper.py mixedgauge <title> <message> <height> <width> <percent> <tag1> <status1> ...
+            title = args[1] if len(args) > 1 else "Progress"
+            message = args[2] if len(args) > 2 else ""
+            height = int(args[3]) if len(args) > 3 else 20
+            width = int(args[4]) if len(args) > 4 else 70
+            percent = int(args[5]) if len(args) > 5 else 0
+            
+            # Parse elements (tag, status pairs)
+            elements = []
+            i = 6
+            while i < len(args):
+                if i + 1 < len(args):
+                    tag = args[i]
+                    status = args[i + 1]
+                    elements.append((tag, status))
+                    i += 2
+                else:
+                    break
+            
+            gui.mixedgauge(title, message, height, width, percent, elements)
+            sys.exit(0)
         
         else:
             print(f"Unknown command: {command}", file=sys.stderr)

@@ -1,14 +1,14 @@
-# Arch Linux Installer with Python GUI
+# Arch Linux Installer with Python TUI
 
-`install-arch.sh` is a modern, user-friendly installer built from scratch with a Python-based graphical interface. It runs from the official Arch ISO and guides you through the installation process with interactive menus. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a Python-based TUI (Text User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress bars. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
 
-## GUI Screenshots
+## TUI Screenshots
 
-📸 **See the GUI in action!** View example screenshots of all dialog types in [GUI-SCREENSHOTS.md](GUI-SCREENSHOTS.md) or check the [screenshots/](screenshots/) directory.
+📸 **See the TUI in action!** View example screenshots of all dialog types in [GUI-SCREENSHOTS.md](GUI-SCREENSHOTS.md) or check the [screenshots/](screenshots/) directory.
 
 ## What the Installer Does
 
-The installer uses a Python-based GUI (using the dialog library) to provide a friendly, graphical installation experience:
+The installer uses a Python-based TUI (using the dialog library) to provide a friendly, text-based installation experience with progress indicators:
 
 1. **Welcome Screen** - Introduces the installer and its features
 2. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
@@ -26,10 +26,10 @@ The installer uses a Python-based GUI (using the dialog library) to provide a fr
 10. **Desktop Environment** - Choose from 10 desktop options or minimal install
 11. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
 12. **Installation Summary** - Review all settings before proceeding
-13. **Automated Installation** - Progress bar shows installation stages
+13. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
 14. **Completion** - Success message with next steps
 
-All user interaction happens through Python-based GUI dialogs, making the installation process intuitive and reducing errors. The installer automatically downloads and installs the required Python dependencies before starting.
+All user interaction happens through Python-based TUI dialogs with progress bars, making the installation process intuitive and providing clear feedback on progress.
 
 ## Usage
 
@@ -84,19 +84,21 @@ All user interaction happens through Python-based GUI dialogs, making the instal
 
 The installer is fully interactive through Python-based GUI dialogs - no manual configuration needed.
 
-## Interactive GUI Features
+## Interactive TUI Features
 
-The Python-based interface provides:
+The Python-based TUI interface provides:
 
 - **Menu Navigation**: Arrow keys to select, Enter to confirm, Esc to cancel
 - **Input Boxes**: Text entry for hostnames, usernames, etc.
 - **Password Boxes**: Secure password entry (hidden characters)
 - **Yes/No Dialogs**: Clear confirmation prompts
 - **Checklists**: Multi-select for software bundles
-- **Progress Gauge**: Real-time installation progress
-- **Message Boxes**: Information and error displays
+- **Progress Gauge**: Real-time installation progress with detailed status messages
+- **Enhanced Visual Design**: Clean TUI aesthetics with better readability
+- **Color Support**: Optional color highlighting for better user experience
+- **Info Boxes**: Quick status updates during operations
 
-All menus use the dialog TUI (Text User Interface) through Python, which works in any terminal and is automatically installed from the Arch repositories.
+All menus use the dialog TUI through Python, which works in any terminal and is automatically installed from the Arch repositories with enhanced visual features.
 
 ## Storage Options
 
