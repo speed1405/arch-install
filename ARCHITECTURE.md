@@ -190,7 +190,7 @@ Installation progress is shown via dialog gauge:
 
 ### 3. Automatic Dependency Management
 - Dependencies installed automatically before GUI starts
-- Python 3, dialog utility, and python-dialog library
+- Python 3, dialog utility, pip, and pythondialog library
 - No manual setup required
 
 ### 4. Modular Functions
@@ -252,7 +252,8 @@ export DRY_RUN=true
 ### Automatically Installed
 - `python3` - Python interpreter for GUI
 - `dialog` - Dialog utility
-- `python-dialog` - Python dialog library
+- `pip` - Python package manager
+- `pythondialog` - Python dialog library (via pip)
 
 ### Required (Pre-installed or checked)
 - `bash` - Shell interpreter
