@@ -62,19 +62,17 @@ GPU_DRIVER=""
 TUI_AVAILABLE=false
 
 # Required commands
-REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid python3 dialog)
+REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid whiptail)
 
-# Python GUI wrapper
-GUI_WRAPPER="${SCRIPT_DIR}/gui_wrapper.py"
-
-# --- Python GUI Helper Functions ---------------------------------------------
+# --- Whiptail GUI Helper Functions ------------------------------------------
+# Whiptail is included in Arch ISO by default and requires no additional dependencies
 wt_msgbox() {
     local title="$1"
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
     # Don't fail on ESC - allow users to cancel informational dialogs
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" msgbox "$title" "$message" "$height" "$width" || return 1
+    whiptail --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 3>&1 1>&2 2>&3 || return 1
 }
 
 wt_yesno() {
@@ -82,7 +80,7 @@ wt_yesno() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" yesno "$title" "$message" "$height" "$width"
+    whiptail --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 3>&1 1>&2 2>&3
 }
 
 wt_inputbox() {
@@ -91,7 +89,7 @@ wt_inputbox() {
     local default="${3:-}"
     local height="${4:-10}"
     local width="${5:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" inputbox "$title" "$message" "$default" "$height" "$width"
+    whiptail --title "$title" --backtitle "$BACKTITLE" --inputbox "$message" "$height" "$width" "$default" 3>&1 1>&2 2>&3
 }
 
 wt_passwordbox() {
@@ -99,7 +97,7 @@ wt_passwordbox() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" passwordbox "$title" "$message" "$height" "$width"
+    whiptail --title "$title" --backtitle "$BACKTITLE" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
 }
 
 wt_menu() {
@@ -109,7 +107,7 @@ wt_menu() {
     local width="$4"
     local menu_height="$5"
     shift 5
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" menu "$title" "$message" "$height" "$width" "$menu_height" "$@"
+    whiptail --title "$title" --backtitle "$BACKTITLE" --menu "$message" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
 }
 
 wt_checklist() {
@@ -119,38 +117,26 @@ wt_checklist() {
     local width="$4"
     local list_height="$5"
     shift 5
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" checklist "$title" "$message" "$height" "$width" "$list_height" "$@"
+    whiptail --title "$title" --backtitle "$BACKTITLE" --checklist "$message" "$height" "$width" "$list_height" "$@" 3>&1 1>&2 2>&3
 }
 
 wt_infobox() {
-    # New TUI function: Display info without waiting for user input
+    # Display info without waiting for user input
     local title="$1"
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" infobox "$title" "$message" "$height" "$width" || true
-}
-
-wt_mixedgauge() {
-    # New TUI function: Display multiple progress bars
-    local title="$1"
-    local message="$2"
-    local height="$3"
-    local width="$4"
-    local percent="$5"
-    shift 5
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" mixedgauge "$title" "$message" "$height" "$width" "$percent" "$@" || true
+    whiptail --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" || true
 }
 
 wt_gauge() {
-    # Note: gauge uses dialog directly (not Python wrapper) because it expects
-    # piped input for real-time progress updates (e.g., "echo 50" followed by "echo XXX" and message)
-    # The dialog utility is already installed by install-dependencies.sh
+    # Display a progress gauge that accepts input from stdin
+    # Usage: { echo 0; echo "message"; echo 50; echo "XXX"; echo "new message"; echo "XXX"; echo 100; } | wt_gauge "Title" "Initial message"
     local title="$1"
     local message="$2"
     local height="${3:-8}"
     local width="${4:-60}"
-    DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
+    whiptail --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
 }
 
 # --- Logging Functions -------------------------------------------------------
@@ -1246,19 +1232,8 @@ cleanup() {
 main() {
     require_root
     
-    # Install TUI dependencies first
-    log_step "Installing TUI dependencies..."
-    if [[ -f "${SCRIPT_DIR}/install-dependencies.sh" ]]; then
-        if bash "${SCRIPT_DIR}/install-dependencies.sh"; then
-            TUI_AVAILABLE=true
-            log_step "TUI dependencies installed successfully"
-        else
-            fail_early "Failed to install TUI dependencies"
-        fi
-    else
-        log_error "Dependency installer script not found"
-        fail_early "Please ensure install-dependencies.sh is in the same directory as this script"
-    fi
+    # Whiptail is included in Arch ISO by default - no dependencies to install
+    TUI_AVAILABLE=true
     
     ensure_commands
     
