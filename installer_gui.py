@@ -12,7 +12,7 @@ try:
     from dialog import Dialog
 except ImportError:
     print("ERROR: python-dialog module not found.", file=sys.stderr)
-    print("Please install it with: pacman -Sy python-dialog", file=sys.stderr)
+    print("Please install it with: pacman -S python-dialog", file=sys.stderr)
     sys.exit(1)
 
 

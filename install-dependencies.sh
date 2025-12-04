@@ -50,11 +50,15 @@ check_python() {
 
 install_python() {
     log_info "Installing Python 3..."
-    if ! pacman -Sy --noconfirm python 2>&1 | grep -v "warning:"; then
+    local output
+    if output=$(pacman -Sy --noconfirm python 2>&1); then
+        log_info "Python 3 installed successfully."
+        return 0
+    else
         log_error "Failed to install Python 3"
+        echo "$output" | grep -v "warning:" >&2
         return 1
     fi
-    log_info "Python 3 installed successfully."
 }
 
 check_dialog() {
@@ -70,11 +74,15 @@ check_dialog() {
 
 install_dialog() {
     log_info "Installing dialog utility..."
-    if ! pacman -Sy --noconfirm dialog 2>&1 | grep -v "warning:"; then
+    local output
+    if output=$(pacman -Sy --noconfirm dialog 2>&1); then
+        log_info "dialog utility installed successfully."
+        return 0
+    else
         log_error "Failed to install dialog utility"
+        echo "$output" | grep -v "warning:" >&2
         return 1
     fi
-    log_info "dialog utility installed successfully."
 }
 
 check_python_dialog() {
@@ -90,11 +98,15 @@ check_python_dialog() {
 
 install_python_dialog() {
     log_info "Installing python-dialog library..."
-    if ! pacman -Sy --noconfirm python-dialog 2>&1 | grep -v "warning:"; then
+    local output
+    if output=$(pacman -Sy --noconfirm python-dialog 2>&1); then
+        log_info "python-dialog library installed successfully."
+        return 0
+    else
         log_error "Failed to install python-dialog library"
+        echo "$output" | grep -v "warning:" >&2
         return 1
     fi
-    log_info "python-dialog library installed successfully."
 }
 
 verify_gui_files() {
