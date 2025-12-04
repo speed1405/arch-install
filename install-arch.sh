@@ -78,6 +78,7 @@ check_gum() {
 
 install_gum() {
     log_step "Installing gum TUI tool..."
+    local output
     
     # Check network connectivity first
     if ! ping -c 1 -W 2 archlinux.org >/dev/null 2>&1; then
@@ -89,17 +90,21 @@ install_gum() {
     
     # Update package database and install gum
     log_info "Updating package database..."
-    if ! pacman -Sy 2>&1 | grep -v "warning:" >&2; then
+    if output=$(pacman -Sy 2>&1); then
+        log_info "Package database updated."
+    else
         log_error "Failed to update package database"
+        echo "$output" | grep -v "warning:" >&2
         return 1
     fi
     
     log_info "Installing gum from Arch repos..."
-    if pacman -S --noconfirm gum 2>&1 | grep -v "warning:" >&2; then
+    if output=$(pacman -S --noconfirm gum 2>&1); then
         log_info "gum installed successfully."
         return 0
     else
         log_error "Failed to install gum"
+        echo "$output" | grep -v "warning:" >&2
         return 1
     fi
 }
