@@ -190,7 +190,12 @@ ensure_commands() {
 
 require_online() {
     if ! ping -c 1 -W 2 archlinux.org >/dev/null 2>&1; then
-        wt_msgbox "Network Required" "No network connectivity detected.\n\nPlease configure networking before running this installer.\n\nYou can use: iwctl, nmcli, or check your Ethernet connection." 12 70
+        if [[ "$TUI_AVAILABLE" == "true" ]]; then
+            wt_msgbox "Network Required" "No network connectivity detected.\n\nPlease configure networking before running this installer.\n\nYou can use: iwctl, nmcli, or check your Ethernet connection." 12 70
+        else
+            log_error "No network connectivity detected."
+            log_error "Please configure networking before running this installer."
+        fi
         return 1
     fi
     return 0
