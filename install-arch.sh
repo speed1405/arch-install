@@ -258,7 +258,6 @@ fail_early() {
     log_error "$1"
     exit 1
 }
-}
 
 # fail: For errors after TUI is available
 fail() { 

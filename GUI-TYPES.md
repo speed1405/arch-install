@@ -1,119 +1,100 @@
-# GUI Type Options
+# TUI Tool - Gum
 
-The Arch Linux installer supports two different GUI (dialog) utilities for the text-based interface.
+The Arch Linux installer uses **gum** for the modern text-based user interface.
 
-## Available GUI Types
+## About Gum
 
-### 1. whiptail (Default)
-- **Availability**: Included in Arch ISO by default
-- **Installation**: None required - always available
-- **Features**: Basic dialog boxes with simple aesthetics
-- **Use case**: Default choice, works out of the box
+**gum** is a modern, glamorous tool for shell scripts created by Charm (charmbracelet).
 
-### 2. dialog (Enhanced)
+- **Repository**: https://github.com/charmbracelet/gum
 - **Availability**: Available in Arch repositories
-- **Installation**: `pacman -S dialog`
-- **Features**: Enhanced visuals with colors, shadows, and better styling
-- **Use case**: Optional upgrade for better user experience
+- **Installation**: `pacman -S gum`
+- **Features**: Beautiful TUI with colors, styling, and interactive components
+- **Use case**: Modern, user-friendly interface for the installer
 
-## Auto-Detection
+## Installation
 
-By default, the installer automatically detects which GUI utility to use:
-
-1. **Checks for dialog** - If installed, uses dialog for better visuals
-2. **Falls back to whiptail** - Always available in Arch ISO
-
-This ensures the installer always works, even without internet connectivity to install additional packages.
-
-## Manual Selection
-
-You can force a specific GUI type using an environment variable:
-
-### Use dialog (if installed)
-```bash
-INSTALLER_GUI_TYPE=dialog ./install-arch.sh
-```
-
-### Use whiptail (default)
-```bash
-INSTALLER_GUI_TYPE=whiptail ./install-arch.sh
-```
-
-### Auto-detect (default behavior)
-```bash
-INSTALLER_GUI_TYPE=auto ./install-arch.sh
-# or simply:
-./install-arch.sh
-```
-
-## Installing dialog (Optional)
-
-If you want the enhanced dialog experience, install it before running the installer:
+Install gum before running the installer:
 
 ```bash
 # Update package database
 pacman -Sy
 
-# Install dialog
-pacman -S --noconfirm dialog
+# Install gum
+pacman -S --noconfirm gum
 
-# Run installer (will auto-detect and use dialog)
+# Run installer (will check for gum)
 ./install-arch.sh
 ```
 
-## Visual Differences
+Or use the provided dependency installer:
 
-### whiptail
-- Clean, simple interface
-- Basic borders and text
-- Works in any terminal
-- Lightweight and fast
+```bash
+# Automatically installs gum if not present
+./install-dependencies.sh
+```
 
-### dialog
+## Features
+
+Gum provides a modern TUI experience with:
+
+### Interactive Components
+- **Styled messages** - Colorful, formatted text output
+- **Confirmations** - Yes/No prompts with custom buttons
+- **Input fields** - Text entry with placeholders
+- **Password fields** - Hidden password input
+- **Menus** - Single-select from options
+- **Checklists** - Multi-select from options
+- **Progress indicators** - Visual feedback for operations
+
+### Visual Enhancements
 - Enhanced colors and styling
-- Shadow effects for depth
 - Better visual hierarchy
-- More polished appearance
+- Modern, clean appearance
+- Improved readability
 
-Both provide the same functionality - the difference is purely aesthetic.
+## Usage in Installer
+
+The installer uses gum for all user interactions:
+
+- **Welcome screens** - Styled introductions
+- **Hardware detection** - Clear summary displays
+- **Disk selection** - Interactive menus
+- **Configuration** - Input fields for hostname, users, etc.
+- **Software selection** - Checklists for bundles
+- **Progress** - Real-time status updates
 
 ## Compatibility
 
-Both GUI types support all installer features:
+All installer features work with gum:
 - Message boxes
 - Yes/No confirmations
 - Input boxes
 - Password boxes (hidden input)
 - Selection menus
-- Checklists
-- Progress gauges
+- Multi-select checklists
+- Progress indicators
 
 ## Troubleshooting
 
-### "No GUI utility found" error
-This means neither whiptail nor dialog is available. This should never happen in a standard Arch ISO, but if it does:
+### "gum not found" error
+
+If gum is not installed:
 
 ```bash
-# Install whiptail (if needed)
-pacman -S libnewt
+# Install gum from Arch repos
+pacman -S gum
 
-# Or install dialog
-pacman -S dialog
+# Verify installation
+gum --version
 ```
 
-### Preference not working
-Make sure to set the environment variable before running the script:
-```bash
-# Correct
-INSTALLER_GUI_TYPE=dialog ./install-arch.sh
+### Dependencies
 
-# Incorrect (won't work)
-./install-arch.sh INSTALLER_GUI_TYPE=dialog
-```
+Gum is the only TUI dependency. The installer will check for it at startup and provide clear error messages if it's not available.
 
 ## Recommendations
 
-- **Default users**: Just run `./install-arch.sh` - auto-detection works great
-- **Better visuals**: Install dialog first with `pacman -S dialog`
-- **Minimal setup**: Use whiptail (already included, no installation needed)
-- **Offline installation**: Use whiptail (doesn't require network/packages)
+- **First-time users**: Run `./install-dependencies.sh` to automatically install gum
+- **Manual installation**: Install with `pacman -S gum` before running the installer
+- **Arch ISO**: gum must be installed from repos (requires network connectivity)
