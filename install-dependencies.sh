@@ -85,25 +85,49 @@ install_dialog() {
     fi
 }
 
-check_python_dialog() {
-    log_info "Checking for python-dialog library..."
-    if python3 -c "import dialog" 2>/dev/null; then
-        log_info "python-dialog library found."
+check_pip() {
+    log_info "Checking for pip..."
+    if python3 -m pip --version >/dev/null 2>&1; then
+        log_info "pip found."
         return 0
     else
-        log_warn "python-dialog library not found."
+        log_warn "pip not found."
+        return 1
+    fi
+}
+
+install_pip() {
+    log_info "Installing pip..."
+    local output
+    if output=$(pacman -Sy --noconfirm python-pip 2>&1); then
+        log_info "pip installed successfully."
+        return 0
+    else
+        log_error "Failed to install pip"
+        echo "$output" | grep -v "warning:" >&2
+        return 1
+    fi
+}
+
+check_python_dialog() {
+    log_info "Checking for pythondialog library..."
+    if python3 -c "import dialog" 2>/dev/null; then
+        log_info "pythondialog library found."
+        return 0
+    else
+        log_warn "pythondialog library not found."
         return 1
     fi
 }
 
 install_python_dialog() {
-    log_info "Installing python-dialog library..."
+    log_info "Installing pythondialog library via pip..."
     local output
-    if output=$(pacman -Sy --noconfirm python-dialog 2>&1); then
-        log_info "python-dialog library installed successfully."
+    if output=$(python3 -m pip install --break-system-packages pythondialog 2>&1); then
+        log_info "pythondialog library installed successfully."
         return 0
     else
-        log_error "Failed to install python-dialog library"
+        log_error "Failed to install pythondialog library"
         echo "$output" | grep -v "warning:" >&2
         return 1
     fi
@@ -176,7 +200,12 @@ main() {
         install_dialog || exit 1
     fi
     
-    # Check and install python-dialog if needed
+    # Check and install pip if needed
+    if ! check_pip; then
+        install_pip || exit 1
+    fi
+    
+    # Check and install pythondialog if needed
     if ! check_python_dialog; then
         install_python_dialog || exit 1
     fi

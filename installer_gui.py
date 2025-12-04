@@ -11,8 +11,8 @@ from typing import List, Tuple, Optional
 try:
     from dialog import Dialog
 except ImportError:
-    print("ERROR: python-dialog module not found.", file=sys.stderr)
-    print("Please install it with: pacman -S python-dialog", file=sys.stderr)
+    print("ERROR: pythondialog module not found.", file=sys.stderr)
+    print("Please install it with: python3 -m pip install --break-system-packages pythondialog", file=sys.stderr)
     sys.exit(1)
 
 

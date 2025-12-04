@@ -63,7 +63,8 @@ All user interaction happens through Python-based GUI dialogs, making the instal
    The installer will automatically:
    - Install Python 3 if not already present
    - Install the dialog utility
-   - Install the python-dialog library
+   - Install pip (Python package manager)
+   - Install the pythondialog library via pip
    - Verify all GUI components are ready
 
 5. Follow the GUI prompts:
@@ -178,7 +179,8 @@ The installer requires:
 The following dependencies are **automatically installed** by the installer:
 - Python 3
 - `dialog` utility
-- `python-dialog` library
+- `pip` (Python package manager)
+- `pythondialog` library (via pip)
 
 All other required tools are checked automatically at startup.
 
