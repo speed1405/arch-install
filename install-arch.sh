@@ -132,10 +132,10 @@ wt_msgbox() {
     
     if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
         # dialog: supports colors and better aesthetics
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 3>&1 1>&2 2>&3 || return 1
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 2>&1 >/dev/tty || return 1
     else
         # whiptail: default fallback
-        whiptail --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 3>&1 1>&2 2>&3 || return 1
+        whiptail --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 2>&1 >/dev/tty || return 1
     fi
 }
 
@@ -146,9 +146,9 @@ wt_yesno() {
     local width="${4:-60}"
     
     if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 3>&1 1>&2 2>&3
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 2>&1 >/dev/tty
     else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 3>&1 1>&2 2>&3
+        whiptail --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 2>&1 >/dev/tty
     fi
 }
 
@@ -218,9 +218,9 @@ wt_infobox() {
     local width="${4:-60}"
     
     if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" || true
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" 2>&1 >/dev/tty || true
     else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" || true
+        whiptail --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" 2>&1 >/dev/tty || true
     fi
 }
 
