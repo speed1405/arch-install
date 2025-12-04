@@ -2,18 +2,40 @@
 
 ## Overview
 
-The installer is a Bash script with a Whiptail-based GUI that guides users through installing Arch Linux. The GUI uses Whiptail, which is included in the Arch ISO by default.
+The installer is a Bash script with a dialog-based GUI that guides users through installing Arch Linux. The GUI supports both `dialog` (enhanced visuals) and `whiptail` (default in Arch ISO), with automatic detection to use the best available option.
+
+## GUI Type System
+
+The installer implements a flexible GUI type system:
+
+- **Supported types**: `dialog` (enhanced), `whiptail` (default), `auto` (auto-detect)
+- **Detection**: Automatically detects available GUI utilities at startup
+- **Priority**: Prefers `dialog` if installed (better visuals), falls back to `whiptail`
+- **User control**: Can be forced via `INSTALLER_GUI_TYPE` environment variable
+- **Zero dependencies**: `whiptail` is always available in Arch ISO
+
+This design ensures the installer works in all scenarios:
+1. Fresh Arch ISO → uses whiptail (included by default)
+2. With dialog installed → uses dialog (better UX)
+3. User preference → respects manual GUI type selection
 
 ## Script Structure
 
 ### 1. Configuration & Globals (Lines 1-80)
 - Script metadata and version
 - Global configuration variables
+- GUI type configuration (`GUI_TYPE`, `DETECTED_GUI_TYPE`)
 - Runtime state variables
-- Required tools list (includes whiptail)
+- Required tools list
 
-### 2. Whiptail GUI Helper Functions (Lines 67-140)
-Wrapper functions for Whiptail-based dialogs:
+### 2. GUI Detection (Lines 82-122)
+- `detect_gui_type()` - Auto-detects available GUI utility
+  - Checks for `dialog` (preferred)
+  - Falls back to `whiptail` (always available)
+  - Respects user preference via `INSTALLER_GUI_TYPE`
+
+### 3. Universal GUI Helper Functions (Lines 124-240)
+Wrapper functions that work with both dialog and whiptail:
 - `wt_msgbox()` - Display information
 - `wt_yesno()` - Yes/No confirmations
 - `wt_inputbox()` - Text input
@@ -23,7 +45,7 @@ Wrapper functions for Whiptail-based dialogs:
 - `wt_gauge()` - Progress bars
 - `wt_infobox()` - Non-blocking info messages
 
-All GUI functions call whiptail directly (no external dependencies required).
+Each function checks `DETECTED_GUI_TYPE` and calls the appropriate utility (dialog or whiptail) with proper arguments.
 
 ### 3. Utility Functions (Lines 132-180)
 - `log_step()`, `log_info()`, `log_error()` - Logging
@@ -100,7 +122,7 @@ main()
   │   ├── microcode_package()
   │   └── detect_gpu_driver()
   │
-  ├── Interactive Whiptail GUI workflow
+  ├── Interactive Dialog GUI workflow
   │   ├── show_welcome()
   │   ├── show_hardware_summary()
   │   ├── select_disk()
@@ -140,7 +162,7 @@ main()
 
 ### User Input → Configuration
 ```
-Whiptail GUI Dialogs → Global Variables → Installation Functions
+Dialog/Whiptail GUI → Global Variables → Installation Functions
 ```
 
 ### Examples:
@@ -178,20 +200,22 @@ Installation progress is shown via dialog gauge:
 
 ## Key Design Decisions
 
-### 1. Main Script with Whiptail GUI
+### 1. Main Script with Dialog GUI
 - Bash for system operations and installation logic
-- Whiptail-based GUI for user interaction
-- Modular design with separate GUI wrapper functions
+- Dialog-based GUI for user interaction (dialog or whiptail)
+- Modular design with universal GUI wrapper functions
+- Auto-detection of best available GUI utility
 
-### 2. Whiptail for GUI
-- Already included in Arch ISO by default
-- Lightweight and fast
-- Consistent across terminals
-- No external dependencies required
+### 2. Dialog/Whiptail for GUI
+- **dialog**: Enhanced visuals with colors and shadows (optional, from Arch repos)
+- **whiptail**: Included in Arch ISO by default (always available)
+- Auto-detects and uses best option
+- User can force specific type via environment variable
 
-### 3. No Additional Dependencies
-- All required tools are included in Arch ISO
-- No manual setup or installation required
+### 3. No External Dependencies
+- whiptail is included in Arch ISO (no installation needed)
+- dialog is optional enhancement (can be installed from repos)
+- No pip, Python packages, or network dependencies for basic GUI
 
 ### 4. Modular Functions
 - Each installation stage is a separate function
@@ -250,7 +274,10 @@ export DRY_RUN=true
 ## Dependencies
 
 **Built-in Tools (Arch ISO)**:
-- `whiptail` - GUI dialog utility (included in Arch ISO)
+- `whiptail` - Basic GUI dialog utility (always included in Arch ISO)
+
+**Optional Enhancements**:
+- `dialog` - Enhanced GUI with better visuals (install with `pacman -S dialog`)
 
 **Required (Pre-installed or checked)**:
 - `bash` - Shell interpreter
@@ -266,15 +293,16 @@ export DRY_RUN=true
 
 ## Security Considerations
 
-1. **Password Input**: Uses whiptail passwordbox (hidden)
+1. **Password Input**: Uses whiptail/dialog passwordbox (hidden)
 2. **Disk Confirmation**: Double confirmation for disk erasure
 3. **LUKS Encryption**: Password confirmation for encryption
 4. **Installation Summary**: Review before proceeding
 5. **Cleanup on Exit**: Trap to unmount filesystems
-6. **Dependency Verification**: All required tools are included in Arch ISO by default
+6. **No External Downloads**: GUI utilities are from Arch repos (trusted sources)
 
 ## Performance
 
+- GUI detection: < 1 second
 - Hardware detection: < 1 second
 - User interaction: Depends on user
 - Installation: 5-15 minutes (depends on network and packages)
