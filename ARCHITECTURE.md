@@ -2,54 +2,53 @@
 
 ## Overview
 
-The installer is a Bash script with a dialog-based GUI that guides users through installing Arch Linux. The GUI supports both `dialog` (enhanced visuals) and `whiptail` (default in Arch ISO), with automatic detection to use the best available option.
+The installer is a Bash script with a gum-based TUI that guides users through installing Arch Linux. The TUI uses gum, a modern and beautiful tool for shell script interfaces, providing colorful prompts and interactive components.
 
-## GUI Type System
+## TUI System
 
-The installer implements a flexible GUI type system:
+The installer uses **gum** for the user interface:
 
-- **Supported types**: `dialog` (enhanced), `whiptail` (default), `auto` (auto-detect)
-- **Detection**: Automatically detects available GUI utilities at startup
-- **Priority**: Prefers `dialog` if installed (better visuals), falls back to `whiptail`
-- **User control**: Can be forced via `INSTALLER_GUI_TYPE` environment variable
-- **Zero dependencies**: `whiptail` is always available in Arch ISO
+- **Tool**: gum (https://github.com/charmbracelet/gum)
+- **Installation**: Available in Arch repos (`pacman -S gum`)
+- **Features**: Modern, colorful TUI with styled prompts, interactive inputs, and menus
+- **Detection**: Checked at startup, installer exits with clear error if not found
 
-This design ensures the installer works in all scenarios:
-1. Fresh Arch ISO → uses whiptail (included by default)
-2. With dialog installed → uses dialog (better UX)
-3. User preference → respects manual GUI type selection
+This design provides a consistent, beautiful user experience with:
+1. Colorful, styled interface
+2. Better keyboard navigation
+3. Modern, intuitive prompts
+4. Enhanced visual feedback
 
 ## Script Structure
 
 ### 1. Configuration & Globals (Lines 1-80)
 - Script metadata and version
 - Global configuration variables
-- GUI type configuration (`GUI_TYPE`, `DETECTED_GUI_TYPE`)
+- TUI availability flag
 - Runtime state variables
 - Required tools list
 
-### 2. GUI Detection (Lines 82-122)
-- `detect_gui_type()` - Auto-detects available GUI utility
-  - Checks for `dialog` (preferred)
-  - Falls back to `whiptail` (always available)
-  - Respects user preference via `INSTALLER_GUI_TYPE`
+### 2. TUI Detection (Lines 82-90)
+- `check_gum()` - Verifies gum is installed
+  - Returns success if gum command is available
+  - Used at startup to ensure TUI is ready
 
-### 3. Universal GUI Helper Functions (Lines 124-240)
-Wrapper functions that work with both dialog and whiptail:
-- `wt_msgbox()` - Display information
-- `wt_yesno()` - Yes/No confirmations
-- `wt_inputbox()` - Text input
-- `wt_passwordbox()` - Password input
-- `wt_menu()` - Selection menus
-- `wt_checklist()` - Multi-select lists
-- `wt_gauge()` - Progress bars
+### 3. TUI Helper Functions (Lines 92-240)
+Wrapper functions using gum for modern interface:
+- `wt_msgbox()` - Display information with styled output
+- `wt_yesno()` - Yes/No confirmations via gum confirm
+- `wt_inputbox()` - Text input with placeholders
+- `wt_passwordbox()` - Password input (hidden)
+- `wt_menu()` - Selection menus via gum choose
+- `wt_checklist()` - Multi-select via gum choose --no-limit
+- `wt_gauge()` - Progress indicators (simplified)
 - `wt_infobox()` - Non-blocking info messages
 
-Each function checks `DETECTED_GUI_TYPE` and calls the appropriate utility (dialog or whiptail) with proper arguments.
+Each function provides a clean interface matching the original dialog/whiptail API while using gum's modern components.
 
 ### 3. Utility Functions (Lines 132-180)
 - `log_step()`, `log_info()`, `log_error()` - Logging
-- `fail()` - Error handling with GUI
+- `fail()` - Error handling with TUI
 - `require_root()` - Root privilege check
 - `ensure_commands()` - Dependency verification
 - `require_online()` - Network connectivity check
@@ -67,8 +66,8 @@ Each function checks `DETECTED_GUI_TYPE` and calls the appropriate utility (dial
 - `partition_suffix_for()` - nvme vs sda naming
 - `get_disks()` - List available disks
 
-### 6. GUI Workflow Functions (Lines 262-460)
-Interactive menus for user configuration:
+### 6. TUI Workflow Functions (Lines 262-460)
+Interactive menus for user configuration using gum:
 - `show_welcome()` - Welcome screen
 - `show_hardware_summary()` - Hardware info
 - `select_disk()` - Disk selection menu
@@ -113,7 +112,7 @@ The `main()` function orchestrates the installation:
 main()
   ├── Pre-flight checks
   │   ├── require_root()
-  │   ├── Install GUI dependencies (install-dependencies.sh)
+  │   ├── check_gum() - Verify gum is installed
   │   ├── ensure_commands()
   │   └── require_online()
   │
@@ -122,7 +121,7 @@ main()
   │   ├── microcode_package()
   │   └── detect_gpu_driver()
   │
-  ├── Interactive Dialog GUI workflow
+  ├── Interactive gum TUI workflow
   │   ├── show_welcome()
   │   ├── show_hardware_summary()
   │   ├── select_disk()
@@ -140,7 +139,7 @@ main()
   │   ├── resolve_boot_mode()
   │   └── resolve_bootloader()
   │
-  └── Installation (with progress gauge)
+  └── Installation (with progress indicators)
       ├── partition_disk()
       ├── format_boot_partition()
       ├── setup_luks_container()
@@ -162,7 +161,7 @@ main()
 
 ### User Input → Configuration
 ```
-Dialog/Whiptail GUI → Global Variables → Installation Functions
+Gum TUI → Global Variables → Installation Functions
 ```
 
 ### Examples:
@@ -173,30 +172,15 @@ Dialog/Whiptail GUI → Global Variables → Installation Functions
 ## Error Handling
 
 1. **Pre-flight**: Check requirements before starting
-2. **Whiptail Availability**: Verify whiptail is available (included in Arch ISO)
+2. **Gum Availability**: Verify gum is installed (requires manual installation via pacman)
 3. **Validation**: Validate user input at each step
 4. **Confirmation**: Require explicit confirmation for destructive operations
 5. **Cleanup**: `trap cleanup EXIT` ensures proper cleanup
-6. **Error Messages**: GUI error dialogs via `fail()` function
+6. **Error Messages**: TUI error dialogs via `fail()` function
 
 ## Progress Tracking
 
-Installation progress is shown via dialog gauge:
-
-```bash
-{
-  echo "0"; echo "# Partitioning disk..."
-  partition_disk()
-  
-  echo "25"; echo "# Formatting filesystems..."
-  format_filesystems()
-  
-  echo "50"; echo "# Installing base system..."
-  install_base_system()
-  
-  echo "100"; echo "# Installation complete!"
-} | wt_gauge "Installing Arch Linux" "Please wait..." 8 70
-```
+Installation progress is shown with status messages and gum's progress indicators during long-running operations.
 
 ## Key Design Decisions
 
@@ -256,7 +240,6 @@ Edit detection functions in hardware detection section
 ### Syntax Check
 ```bash
 bash -n install-arch.sh
-python3 -m py_compile installer_gui.py gui_wrapper.py
 ```
 
 ### Dependency Installation Test
@@ -273,11 +256,8 @@ export DRY_RUN=true
 
 ## Dependencies
 
-**Built-in Tools (Arch ISO)**:
-- `whiptail` - Basic GUI dialog utility (always included in Arch ISO)
-
-**Optional Enhancements**:
-- `dialog` - Enhanced GUI with better visuals (install with `pacman -S dialog`)
+**Required TUI Tool**:
+- `gum` - Modern TUI tool (install with `pacman -S gum`)
 
 **Required (Pre-installed or checked)**:
 - `bash` - Shell interpreter
@@ -293,16 +273,16 @@ export DRY_RUN=true
 
 ## Security Considerations
 
-1. **Password Input**: Uses whiptail/dialog passwordbox (hidden)
+1. **Password Input**: Uses gum password input (hidden)
 2. **Disk Confirmation**: Double confirmation for disk erasure
 3. **LUKS Encryption**: Password confirmation for encryption
 4. **Installation Summary**: Review before proceeding
 5. **Cleanup on Exit**: Trap to unmount filesystems
-6. **No External Downloads**: GUI utilities are from Arch repos (trusted sources)
+6. **No External Downloads**: gum is from Arch repos (trusted source)
 
 ## Performance
 
-- GUI detection: < 1 second
+- TUI detection: < 1 second
 - Hardware detection: < 1 second
 - User interaction: Depends on user
 - Installation: 5-15 minutes (depends on network and packages)

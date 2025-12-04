@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Arch Linux installer with Python GUI interface
+# Arch Linux installer with gum TUI interface
 # Built from scratch for a modern, user-friendly installation experience
 # Run from an Arch ISO live session with networking enabled
 
@@ -11,13 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_VERSION="2.0.0"
 BACKTITLE="Arch Linux Installer v${SCRIPT_VERSION} - TUI Mode"
 
-# GUI Configuration - Auto-detect or set via environment variable
-# Supported: "dialog", "whiptail", "auto"
-# dialog: Better visuals, more features (needs to be installed from repos)
-# whiptail: Simpler, already included in Arch ISO
-# auto: Prefer dialog if available, fallback to whiptail
-GUI_TYPE="${INSTALLER_GUI_TYPE:-auto}"
-DETECTED_GUI_TYPE=""
+# TUI Configuration - Using gum for modern interface
+TUI_AVAILABLE=false
 
 # Installation configuration (populated by GUI)
 INSTALL_DISK=""
@@ -67,117 +62,77 @@ HOME_DEVICE=""
 MICROCODE=""
 MICROCODE_IMG=""
 GPU_DRIVER=""
-TUI_AVAILABLE=false
 
-# Required commands (GUI tool will be detected/selected at runtime)
+# Required commands (gum will be checked separately)
 REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid)
 
-# --- GUI Detection and Selection ---------------------------------------------
-detect_gui_type() {
-    # Detect which GUI utility to use based on availability and preference
-    # Priority: user preference > dialog > whiptail
-    local has_dialog=false
-    local has_whiptail=false
-    
-    command -v dialog >/dev/null 2>&1 && has_dialog=true
-    command -v whiptail >/dev/null 2>&1 && has_whiptail=true
-    
-    case "$GUI_TYPE" in
-        dialog)
-            if [[ "$has_dialog" == "true" ]]; then
-                echo "dialog"
-                return 0
-            else
-                log_error "dialog requested but not found. Install with: pacman -S dialog"
-                return 1
-            fi
-            ;;
-        whiptail)
-            if [[ "$has_whiptail" == "true" ]]; then
-                echo "whiptail"
-                return 0
-            else
-                log_error "whiptail requested but not found"
-                return 1
-            fi
-            ;;
-        auto)
-            # Auto-detect: prefer dialog (better features) if available, fallback to whiptail
-            if [[ "$has_dialog" == "true" ]]; then
-                echo "dialog"
-                return 0
-            elif [[ "$has_whiptail" == "true" ]]; then
-                echo "whiptail"
-                return 0
-            else
-                log_error "No GUI utility found. Please install dialog or whiptail"
-                return 1
-            fi
-            ;;
-        *)
-            log_error "Unknown GUI_TYPE: $GUI_TYPE (use 'dialog', 'whiptail', or 'auto')"
-            return 1
-            ;;
-    esac
+# --- TUI Detection and Setup -------------------------------------------------
+check_gum() {
+    # Check if gum is available
+    if command -v gum >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
 }
 
-# --- Universal GUI Helper Functions ------------------------------------------
-# These wrapper functions work with both dialog and whiptail
-# The actual command is selected based on DETECTED_GUI_TYPE
+# --- TUI Helper Functions with gum -------------------------------------------
+# Wrapper functions using gum for modern TUI interface
 wt_msgbox() {
     local title="$1"
     local message="$2"
-    local height="${3:-10}"
-    local width="${4:-60}"
+    # height and width params ignored - gum handles sizing automatically
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        # dialog: supports colors and better aesthetics
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 2>&1 >/dev/tty || return 1
-    else
-        # whiptail: default fallback
-        whiptail --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 2>&1 >/dev/tty || return 1
-    fi
+    # Display message and wait for user to press Enter
+    echo -e "$message" | gum format
+    gum confirm "Press Enter to continue" --affirmative "OK" --negative "" --default=true 2>/dev/null || true
 }
 
 wt_yesno() {
     local title="$1"
     local message="$2"
-    local height="${3:-10}"
-    local width="${4:-60}"
+    # height and width params ignored - gum handles sizing automatically
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 2>&1 >/dev/tty
-    else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 2>&1 >/dev/tty
+    # Show title if provided
+    if [[ -n "$title" ]]; then
+        gum style --bold --foreground 212 "$title"
     fi
+    
+    # Ask yes/no question
+    gum confirm "$message"
 }
 
 wt_inputbox() {
     local title="$1"
     local message="$2"
     local default="${3:-}"
-    local height="${4:-10}"
-    local width="${5:-60}"
+    # height and width params ignored - gum handles sizing automatically
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --inputbox "$message" "$height" "$width" "$default" 3>&1 1>&2 2>&3
+    # Show title if provided
+    if [[ -n "$title" ]]; then
+        gum style --bold --foreground 212 "$title"
+    fi
+    
+    # Get input with optional default value
+    if [[ -n "$default" ]]; then
+        gum input --placeholder "$message" --value "$default"
     else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --inputbox "$message" "$height" "$width" "$default" 3>&1 1>&2 2>&3
+        gum input --placeholder "$message"
     fi
 }
 
 wt_passwordbox() {
     local title="$1"
     local message="$2"
-    local height="${3:-10}"
-    local width="${4:-60}"
+    # height and width params ignored - gum handles sizing automatically
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        # dialog supports --insecure flag to show asterisks instead of blank
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
-    else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
+    # Show title if provided
+    if [[ -n "$title" ]]; then
+        gum style --bold --foreground 212 "$title"
     fi
+    
+    # Get password input (hidden)
+    gum input --password --placeholder "$message"
 }
 
 wt_menu() {
@@ -188,11 +143,32 @@ wt_menu() {
     local menu_height="$5"
     shift 5
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --menu "$message" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
-    else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --menu "$message" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
+    # Show title if provided
+    if [[ -n "$title" ]]; then
+        gum style --bold --foreground 212 "$title"
     fi
+    
+    # Show message/prompt if provided
+    if [[ -n "$message" ]]; then
+        echo "$message"
+    fi
+    
+    # Build menu items from tag/description pairs
+    local items=()
+    while [[ $# -gt 0 ]]; do
+        local tag="$1"
+        local desc="$2"
+        # Combine tag and description for display
+        items+=("$tag - $desc")
+        shift 2
+    done
+    
+    # Show menu and extract the tag from selection
+    local selection
+    selection=$(printf '%s\n' "${items[@]}" | gum choose --header "$message" 2>/dev/null) || return 1
+    
+    # Extract just the tag (before the " - ")
+    echo "$selection" | sed 's/ - .*//'
 }
 
 wt_checklist() {
@@ -203,10 +179,44 @@ wt_checklist() {
     local list_height="$5"
     shift 5
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --checklist "$message" "$height" "$width" "$list_height" "$@" 3>&1 1>&2 2>&3
+    # Show title if provided
+    if [[ -n "$title" ]]; then
+        gum style --bold --foreground 212 "$title"
+    fi
+    
+    # Build checklist items from tag/description/status triples
+    local items=()
+    local selected=()
+    while [[ $# -gt 0 ]]; do
+        local tag="$1"
+        local desc="$2"
+        local status="$3"
+        # Combine tag and description for display
+        items+=("$tag - $desc")
+        # Track pre-selected items
+        if [[ "$status" == "on" || "$status" == "ON" ]]; then
+            selected+=("$tag - $desc")
+        fi
+        shift 3
+    done
+    
+    # Show multi-select checklist
+    local selections
+    # Build gum choose command with common options
+    local gum_cmd="gum choose --no-limit --header \"$message\""
+    
+    if [[ ${#selected[@]} -gt 0 ]]; then
+        # With pre-selected items
+        selections=$(printf '%s\n' "${items[@]}" | gum choose --no-limit --header "$message" --selected "${selected[@]}" 2>/dev/null || echo "")
     else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --checklist "$message" "$height" "$width" "$list_height" "$@" 3>&1 1>&2 2>&3
+        # No pre-selected items
+        selections=$(printf '%s\n' "${items[@]}" | gum choose --no-limit --header "$message" 2>/dev/null || echo "")
+    fi
+    
+    # Extract just the tags (before the " - ") and format like whiptail output
+    # Process: 1) Remove descriptions, 2) Join lines with spaces, 3) Trim trailing space, 4) Quote each tag
+    if [[ -n "$selections" ]]; then
+        echo "$selections" | sed 's/ - .*//' | tr '\n' ' ' | sed 's/ *$//' | awk '{for(i=1;i<=NF;i++) printf "\"%s\" ", $i}'
     fi
 }
 
@@ -214,29 +224,33 @@ wt_infobox() {
     # Display info without waiting for user input
     local title="$1"
     local message="$2"
-    local height="${3:-10}"
-    local width="${4:-60}"
+    # height and width params ignored - gum handles sizing automatically
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" 2>&1 >/dev/tty || true
-    else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" 2>&1 >/dev/tty || true
+    # Show title if provided
+    if [[ -n "$title" ]]; then
+        gum style --bold --foreground 212 "$title"
     fi
+    
+    # Display message (non-blocking)
+    echo "$message"
 }
 
 wt_gauge() {
-    # Display a progress gauge that accepts input from stdin
-    # Usage: { echo 0; echo "message"; echo 50; echo "XXX"; echo "new message"; echo "XXX"; echo 100; } | wt_gauge "Title" "Initial message"
+    # Display a progress indicator using gum spin
+    # Note: gum doesn't have a traditional gauge, so we use spin for long operations
+    # Usage is different from dialog/whiptail gauge - this wrapper provides compatibility
     local title="$1"
     local message="$2"
-    local height="${3:-8}"
-    local width="${4:-60}"
+    # height and width params ignored - gum handles sizing automatically
     
-    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
-        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
-    else
-        whiptail --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
-    fi
+    # For gauge operations, read and discard stdin (gauge input format is different from gum)
+    # This maintains API compatibility with original dialog/whiptail gauge
+    while IFS= read -r line; do
+        : # Discard each line
+    done
+    
+    # Show a simple message instead
+    echo "$message"
 }
 
 # --- Logging Functions -------------------------------------------------------
@@ -244,7 +258,7 @@ log_step() { printf '\n==> %s\n' "$1"; }
 log_info() { printf '    - %s\n' "$1"; }
 log_error() { printf 'ERROR: %s\n' "$1" >&2; }
 
-# fail_early: For errors that occur before TUI dependencies (python3, dialog) are installed
+# fail_early: For errors that occur before TUI dependencies (gum) are installed
 fail_early() {
     log_error "$1"
     exit 1
@@ -1332,15 +1346,14 @@ cleanup() {
 main() {
     require_root
     
-    # Detect GUI type (whiptail or dialog)
-    log_step "Detecting GUI type..."
-    DETECTED_GUI_TYPE=$(detect_gui_type)
-    if [[ $? -ne 0 ]]; then
-        fail_early "No suitable GUI utility found. Please install whiptail or dialog."
+    # Check for gum TUI
+    log_step "Checking for gum TUI..."
+    if ! check_gum; then
+        fail_early "gum TUI tool not found. Please install gum first."
     fi
-    log_info "Using GUI type: $DETECTED_GUI_TYPE"
+    log_info "Using gum TUI"
     
-    # GUI is now available
+    # TUI is now available
     TUI_AVAILABLE=true
     
     ensure_commands

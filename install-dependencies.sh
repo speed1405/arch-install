@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Dependency installer for Arch Linux Installer GUI
-# Downloads and installs required Python dependencies before starting the GUI
+# Dependency installer for Arch Linux Installer TUI
+# Downloads and installs gum TUI tool before starting the installer
 
 set -euo pipefail
 
@@ -36,130 +36,45 @@ check_network() {
     return 0
 }
 
-check_python() {
-    log_info "Checking for Python 3..."
-    if command -v python3 >/dev/null 2>&1; then
-        local py_version=$(python3 --version 2>&1 | awk '{print $2}')
-        log_info "Python 3 found: version $py_version"
+check_gum() {
+    log_info "Checking for gum TUI tool..."
+    if command -v gum >/dev/null 2>&1; then
+        local gum_version
+        gum_version=$(gum --version 2>&1 | head -1) || gum_version="unknown"
+        log_info "gum found: $gum_version"
         return 0
     else
-        log_warn "Python 3 not found."
+        log_warn "gum not found."
         return 1
     fi
 }
 
-install_python() {
-    log_info "Installing Python 3..."
+install_gum() {
+    log_info "Installing gum from Arch repos..."
     local output
     # Use -S (not -Sy) since database was already refreshed in update_package_database()
-    if output=$(pacman -S --noconfirm python 2>&1); then
-        log_info "Python 3 installed successfully."
+    if output=$(pacman -S --noconfirm gum 2>&1); then
+        log_info "gum installed successfully."
         return 0
     else
-        log_error "Failed to install Python 3"
+        log_error "Failed to install gum"
         echo "$output" | grep -v "warning:" >&2
         return 1
     fi
 }
 
-check_dialog() {
-    log_info "Checking for dialog utility..."
-    if command -v dialog >/dev/null 2>&1; then
-        log_info "dialog utility found."
-        return 0
-    else
-        log_warn "dialog utility not found."
-        return 1
-    fi
-}
-
-install_dialog() {
-    log_info "Installing dialog utility..."
-    local output
-    if output=$(pacman -S --noconfirm dialog 2>&1); then
-        log_info "dialog utility installed successfully."
-        return 0
-    else
-        log_error "Failed to install dialog utility"
-        echo "$output" | grep -v "warning:" >&2
-        return 1
-    fi
-}
-
-check_pip() {
-    log_info "Checking for pip..."
-    if python3 -m pip --version >/dev/null 2>&1; then
-        log_info "pip found."
-        return 0
-    else
-        log_warn "pip not found."
-        return 1
-    fi
-}
-
-install_pip() {
-    log_info "Installing pip..."
-    local output
-    if output=$(pacman -S --noconfirm python-pip 2>&1); then
-        log_info "pip installed successfully."
-        return 0
-    else
-        log_error "Failed to install pip"
-        echo "$output" | grep -v "warning:" >&2
-        return 1
-    fi
-}
-
-check_python_dialog() {
-    log_info "Checking for pythondialog library..."
-    if python3 -c "import dialog" 2>/dev/null; then
-        log_info "pythondialog library found."
-        return 0
-    else
-        log_warn "pythondialog library not found."
-        return 1
-    fi
-}
-
-install_python_dialog() {
-    log_info "Installing pythondialog library via pip..."
-    local output
-    # --break-system-packages is required in Arch ISO live environment because:
-    # 1. Newer pip versions (PEP 668) prevent system-wide installations by default
-    # 2. This protects against conflicts with system package managers
-    # 3. Safe in the live ISO since it's a temporary, isolated environment
-    if output=$(python3 -m pip install --break-system-packages pythondialog 2>&1); then
-        log_info "pythondialog library installed successfully."
-        return 0
-    else
-        log_error "Failed to install pythondialog library"
-        echo "$output" | grep -v "warning:" >&2
-        return 1
-    fi
-}
-
-verify_gui_files() {
-    log_info "Verifying GUI files..."
-    local missing=()
+verify_installer_files() {
+    log_info "Verifying installer files..."
     
-    if [[ ! -f "${SCRIPT_DIR}/installer_gui.py" ]]; then
-        missing+=("installer_gui.py")
-    fi
-    
-    if [[ ! -f "${SCRIPT_DIR}/gui_wrapper.py" ]]; then
-        missing+=("gui_wrapper.py")
-    fi
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "Missing GUI files: ${missing[*]}"
+    if [[ ! -f "${SCRIPT_DIR}/install-arch.sh" ]]; then
+        log_error "Missing installer file: install-arch.sh"
         return 1
     fi
     
-    # Make sure they're executable
-    chmod +x "${SCRIPT_DIR}/installer_gui.py" 2>/dev/null || true
-    chmod +x "${SCRIPT_DIR}/gui_wrapper.py" 2>/dev/null || true
+    # Make sure it's executable
+    chmod +x "${SCRIPT_DIR}/install-arch.sh" 2>/dev/null || true
     
-    log_info "GUI files verified."
+    log_info "Installer files verified."
     return 0
 }
 
@@ -198,43 +113,22 @@ main() {
     
     # Total steps for progress calculation
     current_step=0
-    local total_steps=5
+    local total_steps=2
     
     # Update package database first
     ((current_step++))
     log_info "[${current_step}/${total_steps}] Updating package database..."
     update_package_database || exit 1
     
-    # Check and install Python if needed
+    # Check and install gum if needed
     ((current_step++))
-    log_info "[${current_step}/${total_steps}] Checking Python 3..."
-    if ! check_python; then
-        install_python || exit 1
+    log_info "[${current_step}/${total_steps}] Checking gum TUI tool..."
+    if ! check_gum; then
+        install_gum || exit 1
     fi
     
-    # Check and install dialog if needed
-    ((current_step++))
-    log_info "[${current_step}/${total_steps}] Checking dialog utility..."
-    if ! check_dialog; then
-        install_dialog || exit 1
-    fi
-    
-    # Check and install pip if needed
-    ((current_step++))
-    log_info "[${current_step}/${total_steps}] Checking pip..."
-    if ! check_pip; then
-        install_pip || exit 1
-    fi
-    
-    # Check and install pythondialog if needed
-    ((current_step++))
-    log_info "[${current_step}/${total_steps}] Checking pythondialog library..."
-    if ! check_python_dialog; then
-        install_python_dialog || exit 1
-    fi
-    
-    # Verify GUI files exist
-    if ! verify_gui_files; then
+    # Verify installer files exist
+    if ! verify_installer_files; then
         exit 1
     fi
     
