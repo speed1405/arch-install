@@ -51,7 +51,7 @@ check_python() {
 install_python() {
     log_info "Installing Python 3..."
     local output
-    if output=$(pacman -Sy --noconfirm python 2>&1); then
+    if output=$(pacman -S --noconfirm python 2>&1); then
         log_info "Python 3 installed successfully."
         return 0
     else
@@ -75,7 +75,7 @@ check_dialog() {
 install_dialog() {
     log_info "Installing dialog utility..."
     local output
-    if output=$(pacman -Sy --noconfirm dialog 2>&1); then
+    if output=$(pacman -S --noconfirm dialog 2>&1); then
         log_info "dialog utility installed successfully."
         return 0
     else
@@ -99,7 +99,7 @@ check_pip() {
 install_pip() {
     log_info "Installing pip..."
     local output
-    if output=$(pacman -Sy --noconfirm python-pip 2>&1); then
+    if output=$(pacman -S --noconfirm python-pip 2>&1); then
         log_info "pip installed successfully."
         return 0
     else
@@ -123,6 +123,8 @@ check_python_dialog() {
 install_python_dialog() {
     log_info "Installing pythondialog library via pip..."
     local output
+    # --break-system-packages is required in the Arch ISO live environment
+    # This is safe because we're in a temporary environment with no system packages to break
     if output=$(python3 -m pip install --break-system-packages pythondialog 2>&1); then
         log_info "pythondialog library installed successfully."
         return 0
