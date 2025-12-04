@@ -2,18 +2,40 @@
 
 ## Overview
 
-The installer is a Bash script with a Python-based GUI that guides users through installing Arch Linux. The GUI uses Python's dialog library for an improved user experience.
+The installer is a Bash script with a dialog-based GUI that guides users through installing Arch Linux. The GUI supports both `dialog` (enhanced visuals) and `whiptail` (default in Arch ISO), with automatic detection to use the best available option.
+
+## GUI Type System
+
+The installer implements a flexible GUI type system:
+
+- **Supported types**: `dialog` (enhanced), `whiptail` (default), `auto` (auto-detect)
+- **Detection**: Automatically detects available GUI utilities at startup
+- **Priority**: Prefers `dialog` if installed (better visuals), falls back to `whiptail`
+- **User control**: Can be forced via `INSTALLER_GUI_TYPE` environment variable
+- **Zero dependencies**: `whiptail` is always available in Arch ISO
+
+This design ensures the installer works in all scenarios:
+1. Fresh Arch ISO → uses whiptail (included by default)
+2. With dialog installed → uses dialog (better UX)
+3. User preference → respects manual GUI type selection
 
 ## Script Structure
 
 ### 1. Configuration & Globals (Lines 1-80)
 - Script metadata and version
 - Global configuration variables
+- GUI type configuration (`GUI_TYPE`, `DETECTED_GUI_TYPE`)
 - Runtime state variables
-- Required tools list (includes Python 3 and dialog)
+- Required tools list
 
-### 2. Python GUI Helper Functions (Lines 82-130)
-Wrapper functions for Python-based dialogs:
+### 2. GUI Detection (Lines 82-122)
+- `detect_gui_type()` - Auto-detects available GUI utility
+  - Checks for `dialog` (preferred)
+  - Falls back to `whiptail` (always available)
+  - Respects user preference via `INSTALLER_GUI_TYPE`
+
+### 3. Universal GUI Helper Functions (Lines 124-240)
+Wrapper functions that work with both dialog and whiptail:
 - `wt_msgbox()` - Display information
 - `wt_yesno()` - Yes/No confirmations
 - `wt_inputbox()` - Text input
@@ -21,8 +43,9 @@ Wrapper functions for Python-based dialogs:
 - `wt_menu()` - Selection menus
 - `wt_checklist()` - Multi-select lists
 - `wt_gauge()` - Progress bars
+- `wt_infobox()` - Non-blocking info messages
 
-All GUI functions call the Python wrapper (`gui_wrapper.py`) which uses the `installer_gui.py` module.
+Each function checks `DETECTED_GUI_TYPE` and calls the appropriate utility (dialog or whiptail) with proper arguments.
 
 ### 3. Utility Functions (Lines 132-180)
 - `log_step()`, `log_info()`, `log_error()` - Logging
@@ -99,7 +122,7 @@ main()
   │   ├── microcode_package()
   │   └── detect_gpu_driver()
   │
-  ├── Interactive Python GUI workflow
+  ├── Interactive Dialog GUI workflow
   │   ├── show_welcome()
   │   ├── show_hardware_summary()
   │   ├── select_disk()
@@ -139,7 +162,7 @@ main()
 
 ### User Input → Configuration
 ```
-Python GUI Dialogs → Global Variables → Installation Functions
+Dialog/Whiptail GUI → Global Variables → Installation Functions
 ```
 
 ### Examples:
@@ -150,7 +173,7 @@ Python GUI Dialogs → Global Variables → Installation Functions
 ## Error Handling
 
 1. **Pre-flight**: Check requirements before starting
-2. **Dependency Installation**: Automatically install Python and dialog dependencies
+2. **Whiptail Availability**: Verify whiptail is available (included in Arch ISO)
 3. **Validation**: Validate user input at each step
 4. **Confirmation**: Require explicit confirmation for destructive operations
 5. **Cleanup**: `trap cleanup EXIT` ensures proper cleanup
@@ -177,21 +200,22 @@ Installation progress is shown via dialog gauge:
 
 ## Key Design Decisions
 
-### 1. Main Script with Python GUI
+### 1. Main Script with Dialog GUI
 - Bash for system operations and installation logic
-- Python-based GUI for user interaction
-- Modular design with separate GUI components
+- Dialog-based GUI for user interaction (dialog or whiptail)
+- Modular design with universal GUI wrapper functions
+- Auto-detection of best available GUI utility
 
-### 2. Python Dialog for GUI
-- Automatically installed from Arch repositories
-- Lightweight and fast
-- Consistent across terminals
-- More flexible than whiptail
+### 2. Dialog/Whiptail for GUI
+- **dialog**: Enhanced visuals with colors and shadows (optional, from Arch repos)
+- **whiptail**: Included in Arch ISO by default (always available)
+- Auto-detects and uses best option
+- User can force specific type via environment variable
 
-### 3. Automatic Dependency Management
-- Dependencies installed automatically before GUI starts
-- Python 3, dialog utility, pip, and pythondialog library
-- No manual setup required
+### 3. No External Dependencies
+- whiptail is included in Arch ISO (no installation needed)
+- dialog is optional enhancement (can be installed from repos)
+- No pip, Python packages, or network dependencies for basic GUI
 
 ### 4. Modular Functions
 - Each installation stage is a separate function
@@ -249,13 +273,13 @@ export DRY_RUN=true
 
 ## Dependencies
 
-### Automatically Installed
-- `python3` - Python interpreter for GUI
-- `dialog` - Dialog utility
-- `pip` - Python package manager
-- `pythondialog` - Python dialog library (via pip)
+**Built-in Tools (Arch ISO)**:
+- `whiptail` - Basic GUI dialog utility (always included in Arch ISO)
 
-### Required (Pre-installed or checked)
+**Optional Enhancements**:
+- `dialog` - Enhanced GUI with better visuals (install with `pacman -S dialog`)
+
+**Required (Pre-installed or checked)**:
 - `bash` - Shell interpreter
 - `lsblk`, `parted`, `sgdisk` - Disk operations
 - `pacstrap`, `arch-chroot` - Arch tools
@@ -263,22 +287,22 @@ export DRY_RUN=true
 - `cryptsetup` - LUKS encryption (if used)
 - `lvm2` - LVM tools (if used)
 
-### Optional
+**Optional**:
 - `install-desktop.sh` - Desktop installation
 - Bundle scripts (`*.sh`) - Post-install bundles
 
 ## Security Considerations
 
-1. **Password Input**: Uses Python dialog passwordbox (hidden)
-2. **Confirmation**: Multiple confirmations for destructive ops
-3. **Root Check**: Requires root privileges
-4. **LUKS**: Strong encryption when enabled
-5. **Sudo**: Wheel group properly configured
-6. **Dependency Verification**: Python and dialog libraries installed from official repositories
+1. **Password Input**: Uses whiptail/dialog passwordbox (hidden)
+2. **Disk Confirmation**: Double confirmation for disk erasure
+3. **LUKS Encryption**: Password confirmation for encryption
+4. **Installation Summary**: Review before proceeding
+5. **Cleanup on Exit**: Trap to unmount filesystems
+6. **No External Downloads**: GUI utilities are from Arch repos (trusted sources)
 
 ## Performance
 
-- Dependency installation: ~30-60 seconds (first run only)
+- GUI detection: < 1 second
 - Hardware detection: < 1 second
 - User interaction: Depends on user
 - Installation: 5-15 minutes (depends on network and packages)

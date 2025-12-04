@@ -11,6 +11,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_VERSION="2.0.0"
 BACKTITLE="Arch Linux Installer v${SCRIPT_VERSION} - TUI Mode"
 
+# GUI Configuration - Auto-detect or set via environment variable
+# Supported: "dialog", "whiptail", "auto"
+# dialog: Better visuals, more features (needs to be installed from repos)
+# whiptail: Simpler, already included in Arch ISO
+# auto: Prefer dialog if available, fallback to whiptail
+GUI_TYPE="${INSTALLER_GUI_TYPE:-auto}"
+DETECTED_GUI_TYPE=""
+
 # Installation configuration (populated by GUI)
 INSTALL_DISK=""
 INSTALL_HOSTNAME="archlinux"
@@ -61,20 +69,74 @@ MICROCODE_IMG=""
 GPU_DRIVER=""
 TUI_AVAILABLE=false
 
-# Required commands
-REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid python3 dialog)
+# Required commands (GUI tool will be detected/selected at runtime)
+REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid)
 
-# Python GUI wrapper
-GUI_WRAPPER="${SCRIPT_DIR}/gui_wrapper.py"
+# --- GUI Detection and Selection ---------------------------------------------
+detect_gui_type() {
+    # Detect which GUI utility to use based on availability and preference
+    # Priority: user preference > dialog > whiptail
+    local has_dialog=false
+    local has_whiptail=false
+    
+    command -v dialog >/dev/null 2>&1 && has_dialog=true
+    command -v whiptail >/dev/null 2>&1 && has_whiptail=true
+    
+    case "$GUI_TYPE" in
+        dialog)
+            if [[ "$has_dialog" == "true" ]]; then
+                echo "dialog"
+                return 0
+            else
+                log_error "dialog requested but not found. Install with: pacman -S dialog"
+                return 1
+            fi
+            ;;
+        whiptail)
+            if [[ "$has_whiptail" == "true" ]]; then
+                echo "whiptail"
+                return 0
+            else
+                log_error "whiptail requested but not found"
+                return 1
+            fi
+            ;;
+        auto)
+            # Auto-detect: prefer dialog (better features) if available, fallback to whiptail
+            if [[ "$has_dialog" == "true" ]]; then
+                echo "dialog"
+                return 0
+            elif [[ "$has_whiptail" == "true" ]]; then
+                echo "whiptail"
+                return 0
+            else
+                log_error "No GUI utility found. Please install dialog or whiptail"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "Unknown GUI_TYPE: $GUI_TYPE (use 'dialog', 'whiptail', or 'auto')"
+            return 1
+            ;;
+    esac
+}
 
-# --- Python GUI Helper Functions ---------------------------------------------
+# --- Universal GUI Helper Functions ------------------------------------------
+# These wrapper functions work with both dialog and whiptail
+# The actual command is selected based on DETECTED_GUI_TYPE
 wt_msgbox() {
     local title="$1"
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    # Don't fail on ESC - allow users to cancel informational dialogs
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" msgbox "$title" "$message" "$height" "$width" || return 1
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        # dialog: supports colors and better aesthetics
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 2>&1 >/dev/tty || return 1
+    else
+        # whiptail: default fallback
+        whiptail --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width" 2>&1 >/dev/tty || return 1
+    fi
 }
 
 wt_yesno() {
@@ -82,7 +144,12 @@ wt_yesno() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" yesno "$title" "$message" "$height" "$width"
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 2>&1 >/dev/tty
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width" 2>&1 >/dev/tty
+    fi
 }
 
 wt_inputbox() {
@@ -91,7 +158,12 @@ wt_inputbox() {
     local default="${3:-}"
     local height="${4:-10}"
     local width="${5:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" inputbox "$title" "$message" "$default" "$height" "$width"
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --inputbox "$message" "$height" "$width" "$default" 3>&1 1>&2 2>&3
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --inputbox "$message" "$height" "$width" "$default" 3>&1 1>&2 2>&3
+    fi
 }
 
 wt_passwordbox() {
@@ -99,7 +171,13 @@ wt_passwordbox() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" passwordbox "$title" "$message" "$height" "$width"
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        # dialog supports --insecure flag to show asterisks instead of blank
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
+    fi
 }
 
 wt_menu() {
@@ -109,7 +187,12 @@ wt_menu() {
     local width="$4"
     local menu_height="$5"
     shift 5
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" menu "$title" "$message" "$height" "$width" "$menu_height" "$@"
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --menu "$message" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --menu "$message" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
+    fi
 }
 
 wt_checklist() {
@@ -119,38 +202,41 @@ wt_checklist() {
     local width="$4"
     local list_height="$5"
     shift 5
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" checklist "$title" "$message" "$height" "$width" "$list_height" "$@"
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --checklist "$message" "$height" "$width" "$list_height" "$@" 3>&1 1>&2 2>&3
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --checklist "$message" "$height" "$width" "$list_height" "$@" 3>&1 1>&2 2>&3
+    fi
 }
 
 wt_infobox() {
-    # New TUI function: Display info without waiting for user input
+    # Display info without waiting for user input
     local title="$1"
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" infobox "$title" "$message" "$height" "$width" || true
-}
-
-wt_mixedgauge() {
-    # New TUI function: Display multiple progress bars
-    local title="$1"
-    local message="$2"
-    local height="$3"
-    local width="$4"
-    local percent="$5"
-    shift 5
-    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" mixedgauge "$title" "$message" "$height" "$width" "$percent" "$@" || true
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" 2>&1 >/dev/tty || true
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --infobox "$message" "$height" "$width" 2>&1 >/dev/tty || true
+    fi
 }
 
 wt_gauge() {
-    # Note: gauge uses dialog directly (not Python wrapper) because it expects
-    # piped input for real-time progress updates (e.g., "echo 50" followed by "echo XXX" and message)
-    # The dialog utility is already installed by install-dependencies.sh
+    # Display a progress gauge that accepts input from stdin
+    # Usage: { echo 0; echo "message"; echo 50; echo "XXX"; echo "new message"; echo "XXX"; echo 100; } | wt_gauge "Title" "Initial message"
     local title="$1"
     local message="$2"
     local height="${3:-8}"
     local width="${4:-60}"
-    DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
+    
+    if [[ "$DETECTED_GUI_TYPE" == "dialog" ]]; then
+        DIALOGOPTS='--colors --no-shadow' dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
+    else
+        whiptail --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
+    fi
 }
 
 # --- Logging Functions -------------------------------------------------------
@@ -1246,19 +1332,16 @@ cleanup() {
 main() {
     require_root
     
-    # Install TUI dependencies first
-    log_step "Installing TUI dependencies..."
-    if [[ -f "${SCRIPT_DIR}/install-dependencies.sh" ]]; then
-        if bash "${SCRIPT_DIR}/install-dependencies.sh"; then
-            TUI_AVAILABLE=true
-            log_step "TUI dependencies installed successfully"
-        else
-            fail_early "Failed to install TUI dependencies"
-        fi
-    else
-        log_error "Dependency installer script not found"
-        fail_early "Please ensure install-dependencies.sh is in the same directory as this script"
+    # Detect GUI type (whiptail or dialog)
+    log_step "Detecting GUI type..."
+    DETECTED_GUI_TYPE=$(detect_gui_type)
+    if [[ $? -ne 0 ]]; then
+        fail_early "No suitable GUI utility found. Please install whiptail or dialog."
     fi
+    log_info "Using GUI type: $DETECTED_GUI_TYPE"
+    
+    # GUI is now available
+    TUI_AVAILABLE=true
     
     ensure_commands
     
