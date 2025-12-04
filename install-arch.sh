@@ -59,6 +59,7 @@ HOME_DEVICE=""
 MICROCODE=""
 MICROCODE_IMG=""
 GPU_DRIVER=""
+TUI_AVAILABLE=false
 
 # Required commands
 REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid python3 dialog)
@@ -156,15 +157,25 @@ wt_gauge() {
 log_step() { printf '\n==> %s\n' "$1"; }
 log_info() { printf '    - %s\n' "$1"; }
 log_error() { printf 'ERROR: %s\n' "$1" >&2; }
+
+# fail_early: For errors that occur before TUI dependencies (python3, dialog) are installed
+fail_early() {
+    log_error "$1"
+    exit 1
+}
+
+# fail: For errors after TUI is available
 fail() { 
     log_error "$1"
-    wt_msgbox "Error" "$1" 10 60 || true
+    if [[ "$TUI_AVAILABLE" == "true" ]]; then
+        wt_msgbox "Error" "$1" 10 60 || true
+    fi
     exit 1
 }
 
 # --- Pre-flight Checks -------------------------------------------------------
 require_root() {
-    [[ ${EUID} -eq 0 ]] || fail "This installer must be run as root."
+    [[ ${EUID} -eq 0 ]] || fail_early "This installer must be run as root."
 }
 
 ensure_commands() {
@@ -179,7 +190,12 @@ ensure_commands() {
 
 require_online() {
     if ! ping -c 1 -W 2 archlinux.org >/dev/null 2>&1; then
-        wt_msgbox "Network Required" "No network connectivity detected.\n\nPlease configure networking before running this installer.\n\nYou can use: iwctl, nmcli, or check your Ethernet connection." 12 70
+        if [[ "$TUI_AVAILABLE" == "true" ]]; then
+            wt_msgbox "Network Required" "No network connectivity detected.\n\nPlease configure networking before running this installer.\n\nYou can use: iwctl, nmcli, or check your Ethernet connection." 12 70
+        else
+            log_error "No network connectivity detected."
+            log_error "Please configure networking before running this installer."
+        fi
         return 1
     fi
     return 0
@@ -1233,10 +1249,15 @@ main() {
     # Install TUI dependencies first
     log_step "Installing TUI dependencies..."
     if [[ -f "${SCRIPT_DIR}/install-dependencies.sh" ]]; then
-        bash "${SCRIPT_DIR}/install-dependencies.sh" || fail "Failed to install TUI dependencies"
+        if bash "${SCRIPT_DIR}/install-dependencies.sh"; then
+            TUI_AVAILABLE=true
+            log_step "TUI dependencies installed successfully"
+        else
+            fail_early "Failed to install TUI dependencies"
+        fi
     else
         log_error "Dependency installer script not found"
-        fail "Please ensure install-dependencies.sh is in the same directory as this script"
+        fail_early "Please ensure install-dependencies.sh is in the same directory as this script"
     fi
     
     ensure_commands
