@@ -484,6 +484,17 @@ select_disk() {
         fail "No disk selected. Installation cancelled."
     fi
     
+    # Validate that selection is a valid positive number
+    if ! [[ "$selection" =~ ^[0-9]+$ ]]; then
+        fail "Invalid disk selection: '$selection'. Please try again."
+    fi
+    
+    # Validate selection is within valid range (1 to number of disks)
+    local num_disks=$((${#disk_list[@]} / 2))
+    if (( selection < 1 || selection > num_disks )); then
+        fail "Invalid disk selection: '$selection'. Please select a number between 1 and $num_disks."
+    fi
+    
     # Get the actual disk path from the selection
     local selected_idx=$((selection - 1))
     local disk_line
