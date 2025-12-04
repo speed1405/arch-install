@@ -158,7 +158,7 @@ log_step() { printf '\n==> %s\n' "$1"; }
 log_info() { printf '    - %s\n' "$1"; }
 log_error() { printf 'ERROR: %s\n' "$1" >&2; }
 
-# fail_early: For errors before TUI is available
+# fail_early: For errors that occur before TUI dependencies (python3, dialog) are installed
 fail_early() {
     log_error "$1"
     exit 1
@@ -167,7 +167,7 @@ fail_early() {
 # fail: For errors after TUI is available
 fail() { 
     log_error "$1"
-    if [[ $TUI_AVAILABLE == true ]]; then
+    if [[ "$TUI_AVAILABLE" == "true" ]]; then
         wt_msgbox "Error" "$1" 10 60 || true
     fi
     exit 1
