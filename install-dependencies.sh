@@ -136,10 +136,13 @@ verify_gui_files() {
 
 update_package_database() {
     log_info "Updating package database..."
-    if ! pacman -Sy 2>&1 | grep -v "warning:" | grep -v "^$" >/dev/null; then
-        log_warn "Package database update produced warnings (this is usually safe to ignore)"
+    local output
+    if output=$(pacman -Sy 2>&1); then
+        log_info "Package database updated."
+    else
+        log_warn "Package database update had issues (continuing anyway)"
+        echo "$output" | grep -v "warning:" >&2 || true
     fi
-    log_info "Package database updated."
 }
 
 main() {

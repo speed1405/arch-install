@@ -8,19 +8,26 @@ Called from bash script to display GUI elements
 import sys
 from installer_gui import InstallerGUI
 
+# Version constant - should match install-arch.sh SCRIPT_VERSION
+DEFAULT_BACKTITLE = "Arch Linux Installer v2.0.0"
+
 
 def main():
-    # Parse and remove backtitle if present
-    backtitle = "Arch Linux Installer v2.0.0"
+    # Parse and remove backtitle if present (only process first occurrence)
+    backtitle = DEFAULT_BACKTITLE
     args = sys.argv[1:]  # Skip script name
     
     # Check for --backtitle flag and remove it from args
-    if "--backtitle" in args:
-        idx = args.index("--backtitle")
-        if idx + 1 < len(args):
-            backtitle = args[idx + 1]
-            # Remove both --backtitle and its value
-            args = args[:idx] + args[idx+2:]
+    try:
+        if "--backtitle" in args:
+            idx = args.index("--backtitle")
+            if idx + 1 < len(args):
+                backtitle = args[idx + 1]
+                # Remove both --backtitle and its value
+                args = args[:idx] + args[idx+2:]
+    except (ValueError, IndexError):
+        # Ignore errors in backtitle parsing, use default
+        pass
     
     if len(args) < 1:
         print("Usage: gui_wrapper.py <command> [args...]", file=sys.stderr)
