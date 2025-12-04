@@ -1,24 +1,24 @@
-# Arch Linux Installer with Dialog/Whiptail GUI
+# Arch Linux Installer with Dialog/Whiptail TUI
 
-`install-arch.sh` is a modern, user-friendly installer built from scratch with a dialog-based GUI (Graphical User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress bars. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a dialog-based TUI (Text User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress bars. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
 
-## GUI Type Options
+## TUI Type Options
 
-The installer supports two GUI types:
+The installer supports two TUI types:
 
 - **dialog** - Enhanced TUI with better visuals, colors, and shadows (requires installation: `pacman -S dialog`)
 - **whiptail** - Simpler TUI included in Arch ISO by default (no installation needed)
 
-The installer **auto-detects** which GUI to use:
+The installer **auto-detects** which TUI to use:
 1. Prefers `dialog` if available (better aesthetics and features)
 2. Falls back to `whiptail` (always available in Arch ISO)
 
-You can force a specific GUI type by setting the environment variable:
+You can force a specific TUI type by setting the environment variable:
 ```bash
-# Force dialog (if installed)
+# Use dialog (if installed)
 INSTALLER_GUI_TYPE=dialog ./install-arch.sh
 
-# Force whiptail (default in Arch ISO)
+# Use whiptail (default in Arch ISO)
 INSTALLER_GUI_TYPE=whiptail ./install-arch.sh
 
 # Auto-detect (default)
