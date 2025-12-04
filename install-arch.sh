@@ -89,6 +89,8 @@ install_gum() {
     fi
     
     # Update package database and install gum
+    # Using -Sy is safe here as we're on a fresh Arch ISO live environment
+    # Individual package installations use -S to avoid redundant syncs
     log_info "Updating package database..."
     if output=$(pacman -Sy 2>&1); then
         log_info "Package database updated."
@@ -98,6 +100,8 @@ install_gum() {
         return 1
     fi
     
+    # Using --noconfirm is necessary for automation and is safe here
+    # as we're installing a single, known package from official repos
     log_info "Installing gum from Arch repos..."
     if output=$(pacman -S --noconfirm gum 2>&1); then
         log_info "gum installed successfully."
