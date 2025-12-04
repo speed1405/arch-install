@@ -1,10 +1,14 @@
-# Arch Linux Installer with Whiptail GUI
+# Arch Linux Installer with Python GUI
 
-`install-arch.sh` is a modern, user-friendly installer built from scratch with a whiptail-based graphical interface. It runs from the official Arch ISO and guides you through the installation process with interactive menus. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a Python-based graphical interface. It runs from the official Arch ISO and guides you through the installation process with interactive menus. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+
+## GUI Screenshots
+
+📸 **See the GUI in action!** View example screenshots of all dialog types in [GUI-SCREENSHOTS.md](GUI-SCREENSHOTS.md) or check the [screenshots/](screenshots/) directory.
 
 ## What the Installer Does
 
-The installer uses whiptail to provide a friendly, graphical installation experience:
+The installer uses a Python-based GUI (using the dialog library) to provide a friendly, graphical installation experience:
 
 1. **Welcome Screen** - Introduces the installer and its features
 2. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
@@ -25,7 +29,7 @@ The installer uses whiptail to provide a friendly, graphical installation experi
 13. **Automated Installation** - Progress bar shows installation stages
 14. **Completion** - Success message with next steps
 
-All user interaction happens through whiptail menus, making the installation process intuitive and reducing errors.
+All user interaction happens through Python-based GUI dialogs, making the installation process intuitive and reducing errors. The installer automatically downloads and installs the required Python dependencies before starting.
 
 ## Usage
 
@@ -37,14 +41,17 @@ All user interaction happens through whiptail menus, making the installation pro
    # Example: download directly
    curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/install-arch.sh
    curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/install-desktop.sh
+   curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/install-dependencies.sh
+   curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/installer_gui.py
+   curl -O https://raw.githubusercontent.com/speed1405/arch-install/main/gui_wrapper.py
    
    # Or use scp, USB, etc.
    ```
 
-3. Make the script executable:
+3. Make the scripts executable:
    
    ```bash
-   chmod +x install-arch.sh
+   chmod +x install-arch.sh install-dependencies.sh installer_gui.py gui_wrapper.py
    ```
 
 4. Run the installer:
@@ -53,7 +60,13 @@ All user interaction happens through whiptail menus, making the installation pro
    ./install-arch.sh
    ```
 
-5. Follow the whiptail GUI prompts:
+   The installer will automatically:
+   - Install Python 3 if not already present
+   - Install the dialog utility
+   - Install the python-dialog library
+   - Verify all GUI components are ready
+
+5. Follow the GUI prompts:
    - Select your installation disk
    - Choose filesystem and layout options
    - Configure encryption if desired
@@ -68,11 +81,11 @@ All user interaction happens through whiptail menus, making the installation pro
 
 8. Reboot into your new Arch Linux system!
 
-The installer is fully interactive through whiptail menus - no manual configuration needed.
+The installer is fully interactive through Python-based GUI dialogs - no manual configuration needed.
 
 ## Interactive GUI Features
 
-The whiptail-based interface provides:
+The Python-based interface provides:
 
 - **Menu Navigation**: Arrow keys to select, Enter to confirm, Esc to cancel
 - **Input Boxes**: Text entry for hostnames, usernames, etc.
@@ -82,7 +95,7 @@ The whiptail-based interface provides:
 - **Progress Gauge**: Real-time installation progress
 - **Message Boxes**: Information and error displays
 
-All menus use the whiptail TUI (Text User Interface) which works in any terminal and is included in the Arch ISO by default.
+All menus use the dialog TUI (Text User Interface) through Python, which works in any terminal and is automatically installed from the Arch repositories.
 
 ## Storage Options
 
@@ -150,7 +163,7 @@ Bundles can be selected via whiptail checklist during installation or run manual
 
 - The installer **completely erases** the selected disk - double-check your selection!
 - All sensitive operations (disk erase, encryption setup) require explicit confirmation
-- Passwords are entered through secure whiptail password boxes (hidden input)
+- Passwords are entered through secure Python GUI password boxes (hidden input)
 - Hardware detection runs automatically to select appropriate drivers and microcode
 - The installer validates network connectivity before proceeding
 - Progress is shown in real-time with a progress gauge
@@ -160,14 +173,20 @@ Bundles can be selected via whiptail checklist during installation or run manual
 The installer requires:
 - Arch Linux ISO (booted in live environment)
 - Network connectivity (checked automatically)
-- `whiptail` (included in Arch ISO by default)
 - Root privileges
+
+The following dependencies are **automatically installed** by the installer:
+- Python 3
+- `dialog` utility
+- `python-dialog` library
 
 All other required tools are checked automatically at startup.
 
 ## Technical Details
 
 - Written in Bash with strict error handling (`set -euo pipefail`)
+- Python-based GUI using the dialog library for an improved user experience
+- Automatic dependency installation before GUI starts
 - Modular design with separate functions for each installation stage
 - Automatic hardware detection (CPU vendor, GPU, memory, virtualization)
 - Supports both UEFI and BIOS/Legacy boot modes

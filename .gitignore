@@ -1,0 +1,25 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+venv/
+env/
+ENV/
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test files
+/tmp/

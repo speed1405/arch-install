@@ -1,0 +1,23 @@
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ Arch Linux Installer v2.0.0                                          ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                      Software Bundles                                ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║  Select optional software bundles to install:                       ║
+║  (Use SPACE to select/deselect, ENTER to confirm)                   ║
+║                                                                      ║
+║     ╔══════════════════════════════════════════════════════════╗    ║
+║     ║ [X] aur-helper         AUR helper (yay/paru)             ║    ║
+║     ║ [ ] dev                Developer tools & languages       ║    ║
+║     ║ [X] gaming             Gaming (Steam, Lutris, Wine)      ║    ║
+║     ║ [ ] server             Server tools & services           ║    ║
+║     ║ [ ] cloud              Cloud tools (kubectl, terraform)  ║    ║
+║     ║ [ ] creative           Creative apps (GIMP, Blender)     ║    ║
+║     ║ [X] desktop-utilities  Desktop utilities & browsers      ║    ║
+║     ╚══════════════════════════════════════════════════════════╝    ║
+║                                                                      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║               <  OK  >              < Cancel >                       ║
+╚══════════════════════════════════════════════════════════════════════╝
