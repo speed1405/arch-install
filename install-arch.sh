@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Arch Linux installer with whiptail GUI interface
+# Arch Linux installer with Python GUI interface
 # Built from scratch for a modern, user-friendly installation experience
 # Run from an Arch ISO live session with networking enabled
 
@@ -61,15 +61,18 @@ MICROCODE_IMG=""
 GPU_DRIVER=""
 
 # Required commands
-REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid whiptail)
+REQUIRED_TOOLS=(lsblk awk sed grep parted sgdisk mkfs.fat mkfs.ext4 cryptsetup pacstrap genfstab arch-chroot timedatectl lspci ping systemd-detect-virt blkid python3 dialog)
 
-# --- Whiptail Helper Functions -----------------------------------------------
+# Python GUI wrapper
+GUI_WRAPPER="${SCRIPT_DIR}/gui_wrapper.py"
+
+# --- Python GUI Helper Functions ---------------------------------------------
 wt_msgbox() {
     local title="$1"
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    whiptail --title "$title" --backtitle "$BACKTITLE" --msgbox "$message" "$height" "$width"
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" msgbox "$title" "$message" "$height" "$width"
 }
 
 wt_yesno() {
@@ -77,7 +80,7 @@ wt_yesno() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    whiptail --title "$title" --backtitle "$BACKTITLE" --yesno "$message" "$height" "$width"
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" yesno "$title" "$message" "$height" "$width"
 }
 
 wt_inputbox() {
@@ -86,7 +89,7 @@ wt_inputbox() {
     local default="${3:-}"
     local height="${4:-10}"
     local width="${5:-60}"
-    whiptail --title "$title" --backtitle "$BACKTITLE" --inputbox "$message" "$height" "$width" "$default" 3>&1 1>&2 2>&3
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" inputbox "$title" "$message" "$default" "$height" "$width"
 }
 
 wt_passwordbox() {
@@ -94,7 +97,7 @@ wt_passwordbox() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-60}"
-    whiptail --title "$title" --backtitle "$BACKTITLE" --passwordbox "$message" "$height" "$width" 3>&1 1>&2 2>&3
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" passwordbox "$title" "$message" "$height" "$width"
 }
 
 wt_menu() {
@@ -104,7 +107,7 @@ wt_menu() {
     local width="$4"
     local menu_height="$5"
     shift 5
-    whiptail --title "$title" --backtitle "$BACKTITLE" --menu "$message" "$height" "$width" "$menu_height" "$@" 3>&1 1>&2 2>&3
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" menu "$title" "$message" "$height" "$width" "$menu_height" "$@"
 }
 
 wt_checklist() {
@@ -114,7 +117,7 @@ wt_checklist() {
     local width="$4"
     local list_height="$5"
     shift 5
-    whiptail --title "$title" --backtitle "$BACKTITLE" --checklist "$message" "$height" "$width" "$list_height" "$@" 3>&1 1>&2 2>&3
+    python3 "$GUI_WRAPPER" --backtitle "$BACKTITLE" checklist "$title" "$message" "$height" "$width" "$list_height" "$@"
 }
 
 wt_gauge() {
@@ -122,7 +125,7 @@ wt_gauge() {
     local message="$2"
     local height="${3:-8}"
     local width="${4:-60}"
-    whiptail --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
+    dialog --title "$title" --backtitle "$BACKTITLE" --gauge "$message" "$height" "$width" 0
 }
 
 # --- Logging Functions -------------------------------------------------------
@@ -232,7 +235,7 @@ get_disks() {
 # --- GUI Workflow Functions --------------------------------------------------
 show_welcome() {
     local message="Welcome to the Arch Linux Installer!\n\n"
-    message+="This installer will guide you through setting up Arch Linux with a graphical whiptail interface.\n\n"
+    message+="This installer will guide you through setting up Arch Linux with a Python-based graphical interface.\n\n"
     message+="Features:\n"
     message+="• Hardware auto-detection\n"
     message+="• Multiple filesystem options (ext4, Btrfs)\n"
@@ -1188,6 +1191,16 @@ cleanup() {
 # --- Main Installation Flow -------------------------------------------------
 main() {
     require_root
+    
+    # Install GUI dependencies first
+    log_step "Installing GUI dependencies..."
+    if [[ -f "${SCRIPT_DIR}/install-dependencies.sh" ]]; then
+        bash "${SCRIPT_DIR}/install-dependencies.sh" || fail "Failed to install GUI dependencies"
+    else
+        log_error "Dependency installer script not found"
+        fail "Please ensure install-dependencies.sh is in the same directory as this script"
+    fi
+    
     ensure_commands
     
     if ! require_online; then
