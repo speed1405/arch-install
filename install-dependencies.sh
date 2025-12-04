@@ -39,7 +39,8 @@ check_network() {
 check_gum() {
     log_info "Checking for gum TUI tool..."
     if command -v gum >/dev/null 2>&1; then
-        local gum_version=$(gum --version 2>&1 | head -1)
+        local gum_version
+        gum_version=$(gum --version 2>&1 | head -1) || gum_version="unknown"
         log_info "gum found: $gum_version"
         return 0
     else

@@ -165,7 +165,7 @@ wt_menu() {
     
     # Show menu and extract the tag from selection
     local selection
-    selection=$(printf '%s\n' "${items[@]}" | gum choose --header "$message")
+    selection=$(printf '%s\n' "${items[@]}" | gum choose --header "$message" 2>/dev/null) || return 1
     
     # Extract just the tag (before the " - ")
     echo "$selection" | sed 's/ - .*//'
@@ -202,6 +202,9 @@ wt_checklist() {
     
     # Show multi-select checklist
     local selections
+    # Build gum choose command with common options
+    local gum_cmd="gum choose --no-limit --header \"$message\""
+    
     if [[ ${#selected[@]} -gt 0 ]]; then
         # With pre-selected items
         selections=$(printf '%s\n' "${items[@]}" | gum choose --no-limit --header "$message" --selected "${selected[@]}" 2>/dev/null || echo "")
@@ -211,6 +214,7 @@ wt_checklist() {
     fi
     
     # Extract just the tags (before the " - ") and format like whiptail output
+    # Process: 1) Remove descriptions, 2) Join lines with spaces, 3) Trim trailing space, 4) Quote each tag
     if [[ -n "$selections" ]]; then
         echo "$selections" | sed 's/ - .*//' | tr '\n' ' ' | sed 's/ *$//' | awk '{for(i=1;i<=NF;i++) printf "\"%s\" ", $i}'
     fi
@@ -239,10 +243,11 @@ wt_gauge() {
     local message="$2"
     # height and width params ignored - gum handles sizing automatically
     
-    # For gauge operations, we'll read from stdin and show progress with gum spin
-    # This is a simplified version - actual progress bars would need custom implementation
-    # Read all input and discard (gauge input format is different)
-    cat > /dev/null
+    # For gauge operations, read and discard stdin (gauge input format is different from gum)
+    # This maintains API compatibility with original dialog/whiptail gauge
+    while IFS= read -r line; do
+        : # Discard each line
+    done
     
     # Show a simple message instead
     echo "$message"
