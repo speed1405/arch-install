@@ -76,6 +76,43 @@ check_gum() {
     fi
 }
 
+install_gum() {
+    log_step "Installing gum TUI tool..."
+    local output
+    
+    # Check network connectivity first
+    if ! ping -c 1 -W 2 archlinux.org >/dev/null 2>&1; then
+        log_error "No network connectivity detected."
+        log_error "Please configure networking before running this installer."
+        log_error "You can use: iwctl, nmcli, or check your Ethernet connection."
+        return 1
+    fi
+    
+    # Update package database and install gum
+    # Using -Sy is safe here as we're on a fresh Arch ISO live environment
+    # Individual package installations use -S to avoid redundant syncs
+    log_info "Updating package database..."
+    if output=$(pacman -Sy 2>&1); then
+        log_info "Package database updated."
+    else
+        log_error "Failed to update package database"
+        echo "$output" | grep -v "warning:" >&2
+        return 1
+    fi
+    
+    # Using --noconfirm is necessary for automation and is safe here
+    # as we're installing a single, known package from official repos
+    log_info "Installing gum from Arch repos..."
+    if output=$(pacman -S --noconfirm gum 2>&1); then
+        log_info "gum installed successfully."
+        return 0
+    else
+        log_error "Failed to install gum"
+        echo "$output" | grep -v "warning:" >&2
+        return 1
+    fi
+}
+
 # --- TUI Helper Functions with gum -------------------------------------------
 # Wrapper functions using gum for modern TUI interface
 wt_msgbox() {
@@ -1349,7 +1386,14 @@ main() {
     # Check for gum TUI
     log_step "Checking for gum TUI..."
     if ! check_gum; then
-        fail_early "gum TUI tool not found. Please install gum first."
+        log_info "gum not found, installing automatically..."
+        if ! install_gum; then
+            fail_early "Failed to install gum TUI tool. Please install it manually with: pacman -S gum"
+        fi
+        # Verify installation
+        if ! check_gum; then
+            fail_early "gum installation completed but gum command not found. Please check your PATH."
+        fi
     fi
     log_info "Using gum TUI"
     
