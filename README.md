@@ -2,6 +2,10 @@
 
 `install-arch.sh` is a modern, user-friendly installer built from scratch with a Python-based graphical interface. It runs from the official Arch ISO and guides you through the installation process with interactive menus. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
 
+## GUI Screenshots
+
+📸 **See the GUI in action!** View example screenshots of all dialog types in [GUI-SCREENSHOTS.md](GUI-SCREENSHOTS.md) or check the [screenshots/](screenshots/) directory.
+
 ## What the Installer Does
 
 The installer uses a Python-based GUI (using the dialog library) to provide a friendly, graphical installation experience:

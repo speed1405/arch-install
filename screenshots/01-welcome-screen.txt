@@ -1,0 +1,24 @@
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ Arch Linux Installer v2.0.0                                          ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                            Welcome                                   ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║  Welcome to the Arch Linux Installer!                               ║
+║                                                                      ║
+║  This installer will guide you through setting up Arch Linux        ║
+║  with a Python-based graphical interface.                           ║
+║                                                                      ║
+║  Features:                                                           ║
+║  • Hardware auto-detection                                          ║
+║  • Multiple filesystem options (ext4, Btrfs)                        ║
+║  • Optional LVM and LUKS encryption                                 ║
+║  • Desktop environment selection                                    ║
+║  • Post-install bundle options                                      ║
+║                                                                      ║
+║  Press OK to begin.                                                 ║
+║                                                                      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                            <  OK  >                                  ║
+╚══════════════════════════════════════════════════════════════════════╝

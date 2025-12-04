@@ -1,0 +1,22 @@
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ Arch Linux Installer v2.0.0                                          ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                       Hardware Summary                               ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                      ║
+║  Hardware Detection Summary:                                         ║
+║                                                                      ║
+║  Boot Mode: UEFI                                                     ║
+║  CPU: Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz                      ║
+║  Microcode: intel-ucode                                              ║
+║  GPU: NVIDIA GeForce RTX 2070                                        ║
+║  GPU Driver: nvidia                                                  ║
+║  Memory: 16 GB                                                       ║
+║  Virtualization: bare-metal                                          ║
+║                                                                      ║
+║  Press OK to continue with disk selection.                          ║
+║                                                                      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                            <  OK  >                                  ║
+╚══════════════════════════════════════════════════════════════════════╝
