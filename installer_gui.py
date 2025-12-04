@@ -6,8 +6,6 @@ Replaces whiptail with a Python implementation
 """
 
 import sys
-import os
-import subprocess
 from typing import List, Tuple, Optional
 
 try:

@@ -121,6 +121,9 @@ wt_checklist() {
 }
 
 wt_gauge() {
+    # Note: gauge uses dialog directly (not Python wrapper) because it expects
+    # piped input for real-time progress updates (e.g., "echo 50; echo # message")
+    # The dialog utility is already installed by install-dependencies.sh
     local title="$1"
     local message="$2"
     local height="${3:-8}"

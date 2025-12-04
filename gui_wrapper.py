@@ -6,7 +6,6 @@ Called from bash script to display GUI elements
 """
 
 import sys
-import json
 from installer_gui import InstallerGUI
 
 
