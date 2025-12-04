@@ -51,7 +51,8 @@ check_python() {
 install_python() {
     log_info "Installing Python 3..."
     local output
-    if output=$(pacman -Sy --noconfirm python 2>&1); then
+    # Use -S (not -Sy) since database was already refreshed in update_package_database()
+    if output=$(pacman -S --noconfirm python 2>&1); then
         log_info "Python 3 installed successfully."
         return 0
     else
@@ -75,7 +76,7 @@ check_dialog() {
 install_dialog() {
     log_info "Installing dialog utility..."
     local output
-    if output=$(pacman -Sy --noconfirm dialog 2>&1); then
+    if output=$(pacman -S --noconfirm dialog 2>&1); then
         log_info "dialog utility installed successfully."
         return 0
     else
@@ -85,25 +86,53 @@ install_dialog() {
     fi
 }
 
-check_python_dialog() {
-    log_info "Checking for python-dialog library..."
-    if python3 -c "import dialog" 2>/dev/null; then
-        log_info "python-dialog library found."
+check_pip() {
+    log_info "Checking for pip..."
+    if python3 -m pip --version >/dev/null 2>&1; then
+        log_info "pip found."
         return 0
     else
-        log_warn "python-dialog library not found."
+        log_warn "pip not found."
+        return 1
+    fi
+}
+
+install_pip() {
+    log_info "Installing pip..."
+    local output
+    if output=$(pacman -S --noconfirm python-pip 2>&1); then
+        log_info "pip installed successfully."
+        return 0
+    else
+        log_error "Failed to install pip"
+        echo "$output" | grep -v "warning:" >&2
+        return 1
+    fi
+}
+
+check_python_dialog() {
+    log_info "Checking for pythondialog library..."
+    if python3 -c "import dialog" 2>/dev/null; then
+        log_info "pythondialog library found."
+        return 0
+    else
+        log_warn "pythondialog library not found."
         return 1
     fi
 }
 
 install_python_dialog() {
-    log_info "Installing python-dialog library..."
+    log_info "Installing pythondialog library via pip..."
     local output
-    if output=$(pacman -Sy --noconfirm python-dialog 2>&1); then
-        log_info "python-dialog library installed successfully."
+    # --break-system-packages is required in Arch ISO live environment because:
+    # 1. Newer pip versions (PEP 668) prevent system-wide installations by default
+    # 2. This protects against conflicts with system package managers
+    # 3. Safe in the live ISO since it's a temporary, isolated environment
+    if output=$(python3 -m pip install --break-system-packages pythondialog 2>&1); then
+        log_info "pythondialog library installed successfully."
         return 0
     else
-        log_error "Failed to install python-dialog library"
+        log_error "Failed to install pythondialog library"
         echo "$output" | grep -v "warning:" >&2
         return 1
     fi
@@ -137,6 +166,8 @@ verify_gui_files() {
 update_package_database() {
     log_info "Updating package database..."
     local output
+    # Refresh package database once at startup with -Sy
+    # Individual package installations use -S (no refresh) to avoid redundant syncs
     if output=$(pacman -Sy 2>&1); then
         log_info "Package database updated."
     else
@@ -176,7 +207,12 @@ main() {
         install_dialog || exit 1
     fi
     
-    # Check and install python-dialog if needed
+    # Check and install pip if needed
+    if ! check_pip; then
+        install_pip || exit 1
+    fi
+    
+    # Check and install pythondialog if needed
     if ! check_python_dialog; then
         install_python_dialog || exit 1
     fi
