@@ -170,9 +170,11 @@ update_package_database() {
     # Individual package installations use -S (no refresh) to avoid redundant syncs
     if output=$(pacman -Sy 2>&1); then
         log_info "Package database updated."
+        return 0
     else
-        log_warn "Package database update had issues (continuing anyway)"
-        echo "$output" | grep -v "warning:" >&2 || true
+        log_error "Failed to update package database"
+        echo "$output" | grep -v "warning:" >&2
+        return 1
     fi
 }
 
@@ -201,7 +203,7 @@ main() {
     # Update package database first
     ((current_step++))
     log_info "[${current_step}/${total_steps}] Updating package database..."
-    update_package_database
+    update_package_database || exit 1
     
     # Check and install Python if needed
     ((current_step++))
