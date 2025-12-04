@@ -2,7 +2,7 @@
 
 ## Overview
 
-The installer is a Bash script with a Python-based GUI that guides users through installing Arch Linux. The GUI uses Python's dialog library for an improved user experience.
+The installer is a Bash script with a Whiptail-based GUI that guides users through installing Arch Linux. The GUI uses Whiptail, which is included in the Arch ISO by default.
 
 ## Script Structure
 
@@ -10,10 +10,10 @@ The installer is a Bash script with a Python-based GUI that guides users through
 - Script metadata and version
 - Global configuration variables
 - Runtime state variables
-- Required tools list (includes Python 3 and dialog)
+- Required tools list (includes whiptail)
 
-### 2. Python GUI Helper Functions (Lines 82-130)
-Wrapper functions for Python-based dialogs:
+### 2. Whiptail GUI Helper Functions (Lines 67-140)
+Wrapper functions for Whiptail-based dialogs:
 - `wt_msgbox()` - Display information
 - `wt_yesno()` - Yes/No confirmations
 - `wt_inputbox()` - Text input
@@ -21,8 +21,9 @@ Wrapper functions for Python-based dialogs:
 - `wt_menu()` - Selection menus
 - `wt_checklist()` - Multi-select lists
 - `wt_gauge()` - Progress bars
+- `wt_infobox()` - Non-blocking info messages
 
-All GUI functions call the Python wrapper (`gui_wrapper.py`) which uses the `installer_gui.py` module.
+All GUI functions call whiptail directly (no external dependencies required).
 
 ### 3. Utility Functions (Lines 132-180)
 - `log_step()`, `log_info()`, `log_error()` - Logging
@@ -99,7 +100,7 @@ main()
   │   ├── microcode_package()
   │   └── detect_gpu_driver()
   │
-  ├── Interactive Python GUI workflow
+  ├── Interactive Whiptail GUI workflow
   │   ├── show_welcome()
   │   ├── show_hardware_summary()
   │   ├── select_disk()
@@ -139,7 +140,7 @@ main()
 
 ### User Input → Configuration
 ```
-Python GUI Dialogs → Global Variables → Installation Functions
+Whiptail GUI Dialogs → Global Variables → Installation Functions
 ```
 
 ### Examples:
@@ -150,7 +151,7 @@ Python GUI Dialogs → Global Variables → Installation Functions
 ## Error Handling
 
 1. **Pre-flight**: Check requirements before starting
-2. **Dependency Installation**: Automatically install Python and dialog dependencies
+2. **Whiptail Availability**: Verify whiptail is available (included in Arch ISO)
 3. **Validation**: Validate user input at each step
 4. **Confirmation**: Require explicit confirmation for destructive operations
 5. **Cleanup**: `trap cleanup EXIT` ensures proper cleanup
@@ -177,21 +178,20 @@ Installation progress is shown via dialog gauge:
 
 ## Key Design Decisions
 
-### 1. Main Script with Python GUI
+### 1. Main Script with Whiptail GUI
 - Bash for system operations and installation logic
-- Python-based GUI for user interaction
-- Modular design with separate GUI components
+- Whiptail-based GUI for user interaction
+- Modular design with separate GUI wrapper functions
 
-### 2. Python Dialog for GUI
-- Automatically installed from Arch repositories
+### 2. Whiptail for GUI
+- Already included in Arch ISO by default
 - Lightweight and fast
 - Consistent across terminals
-- More flexible than whiptail
+- No external dependencies required
 
-### 3. Automatic Dependency Management
-- Dependencies installed automatically before GUI starts
-- Python 3, dialog utility, pip, and pythondialog library
-- No manual setup required
+### 3. No Additional Dependencies
+- All required tools are included in Arch ISO
+- No manual setup or installation required
 
 ### 4. Modular Functions
 - Each installation stage is a separate function
@@ -249,13 +249,10 @@ export DRY_RUN=true
 
 ## Dependencies
 
-### Automatically Installed
-- `python3` - Python interpreter for GUI
-- `dialog` - Dialog utility
-- `pip` - Python package manager
-- `pythondialog` - Python dialog library (via pip)
+**Built-in Tools (Arch ISO)**:
+- `whiptail` - GUI dialog utility (included in Arch ISO)
 
-### Required (Pre-installed or checked)
+**Required (Pre-installed or checked)**:
 - `bash` - Shell interpreter
 - `lsblk`, `parted`, `sgdisk` - Disk operations
 - `pacstrap`, `arch-chroot` - Arch tools
@@ -263,22 +260,21 @@ export DRY_RUN=true
 - `cryptsetup` - LUKS encryption (if used)
 - `lvm2` - LVM tools (if used)
 
-### Optional
+**Optional**:
 - `install-desktop.sh` - Desktop installation
 - Bundle scripts (`*.sh`) - Post-install bundles
 
 ## Security Considerations
 
-1. **Password Input**: Uses Python dialog passwordbox (hidden)
-2. **Confirmation**: Multiple confirmations for destructive ops
-3. **Root Check**: Requires root privileges
-4. **LUKS**: Strong encryption when enabled
-5. **Sudo**: Wheel group properly configured
-6. **Dependency Verification**: Python and dialog libraries installed from official repositories
+1. **Password Input**: Uses whiptail passwordbox (hidden)
+2. **Disk Confirmation**: Double confirmation for disk erasure
+3. **LUKS Encryption**: Password confirmation for encryption
+4. **Installation Summary**: Review before proceeding
+5. **Cleanup on Exit**: Trap to unmount filesystems
+6. **Dependency Verification**: All required tools are included in Arch ISO by default
 
 ## Performance
 
-- Dependency installation: ~30-60 seconds (first run only)
 - Hardware detection: < 1 second
 - User interaction: Depends on user
 - Installation: 5-15 minutes (depends on network and packages)
