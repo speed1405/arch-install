@@ -772,8 +772,15 @@ select_encryption() {
                 continue
             fi
             
+            # Enforce minimum 8 characters in beginner mode for security
             if [[ "$BEGINNER_MODE" == "true" ]] && [[ ${#pass1} -lt 8 ]]; then
-                if ! wt_yesno "Weak Passphrase" "Warning: Your passphrase is very short (${#pass1} characters).\n\nFor better security, use at least 12 characters.\n\nDo you want to continue with this passphrase?" 12 65; then
+                wt_msgbox "Passphrase Too Short" "Error: Your passphrase is too short (${#pass1} characters).\n\nMinimum required: 8 characters\nRecommended: 12+ characters for better security\n\nPlease enter a longer passphrase." 12 65
+                continue
+            fi
+            
+            # Warn about weak but acceptable passphrases (8-11 chars)
+            if [[ "$BEGINNER_MODE" == "true" ]] && [[ ${#pass1} -ge 8 ]] && [[ ${#pass1} -lt 12 ]]; then
+                if ! wt_yesno "Weak Passphrase" "Warning: Your passphrase is acceptable but weak (${#pass1} characters).\n\nFor better security, use at least 12 characters.\n\nDo you want to continue with this passphrase?" 12 70; then
                     continue
                 fi
             fi
