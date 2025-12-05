@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validation script for the whiptail-based Arch installer
+# Validation script for the gum-based Arch installer
 
 set -euo pipefail
 
@@ -10,12 +10,14 @@ echo ""
 echo "Test 1: Bash syntax validation"
 bash -n install-arch.sh && echo "  ✓ Syntax check passed"
 
-# Test 2: Whiptail availability
+# Test 2: Gum availability
 echo ""
-echo "Test 2: Checking for required whiptail command"
-if command -v whiptail >/dev/null 2>&1; then
-    echo "  ✓ whiptail is available"
-    whiptail --version 2>&1 | head -1 | sed 's/^/    /'
+echo "Test 2: Checking for required gum command"
+if command -v gum >/dev/null 2>&1; then
+    echo "  ✓ gum is available"
+    gum --version 2>&1 | head -1 | sed 's/^/    /'
+else
+    echo "  ⚠ gum is not installed (install with: pacman -S gum)"
 fi
 
 # Test 3: Function definitions
@@ -28,9 +30,9 @@ grep "^partition_disk()" install-arch.sh >/dev/null && echo "  ✓ partition_dis
 grep "^install_base_system()" install-arch.sh >/dev/null && echo "  ✓ install_base_system"
 grep "^setup_bootloader()" install-arch.sh >/dev/null && echo "  ✓ setup_bootloader"
 
-# Test 4: Whiptail wrappers
+# Test 4: Gum wrapper functions
 echo ""
-echo "Test 4: Checking whiptail wrapper functions"
+echo "Test 4: Checking gum wrapper functions"
 grep "^wt_msgbox()" install-arch.sh >/dev/null && echo "  ✓ wt_msgbox"
 grep "^wt_menu()" install-arch.sh >/dev/null && echo "  ✓ wt_menu"
 grep "^wt_yesno()" install-arch.sh >/dev/null && echo "  ✓ wt_yesno"
@@ -46,7 +48,7 @@ echo "Test 5: Checking supporting files"
 # Test 6: Bundles
 echo ""
 echo "Test 6: Checking bundle scripts"
-for bundle in dev.sh gaming.sh server.sh cloud.sh creative.sh desktop-utilities.sh; do
+for bundle in dev.sh gaming.sh server.sh cloud.sh creative.sh desktop-utilities.sh aur-helper.sh optimization.sh security.sh networking.sh sysadmin.sh; do
     if [ -f "$bundle" ]; then
         bash -n "$bundle" && echo "  ✓ $bundle"
     fi
@@ -60,6 +62,7 @@ echo ""
 echo "The installer is ready. To use it:"
 echo "  1. Boot Arch Linux ISO"
 echo "  2. Ensure network connectivity"
-echo "  3. Run: ./install-arch.sh"
+echo "  3. Install gum: pacman -S gum"
+echo "  4. Run: ./install-arch.sh"
 echo ""
-echo "Demo: ./test-whiptail.sh"
+echo "Note: test-whiptail.sh is a legacy demo using the old whiptail TUI."
