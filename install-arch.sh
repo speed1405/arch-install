@@ -1117,7 +1117,16 @@ select_mirror_region() {
 }
 
 show_installation_summary() {
-    local summary="Installation Configuration Summary:\n\n"
+    local summary=""
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        summary="🎯 Installation Summary - Please Review\n\n"
+        summary+="This is your last chance to review before installation begins.\n"
+        summary+="⚠️ The disk will be permanently erased after you confirm!\n\n"
+    else
+        summary="Installation Configuration Summary:\n\n"
+    fi
+    
     summary+="Disk: ${INSTALL_DISK}\n"
     summary+="Filesystem: ${INSTALL_FILESYSTEM}\n"
     summary+="Layout: ${INSTALL_LAYOUT}\n"
@@ -1165,9 +1174,15 @@ show_installation_summary() {
     else
         summary+="Bundles: none\n\n"
     fi
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        summary+="⏱️ Estimated time: 15-30 minutes\n"
+        summary+="🔒 Keep this window open - don't close it!\n\n"
+    fi
+    
     summary+="Proceed with installation?"
     
-    if ! wt_yesno "Installation Summary" "$summary" 24 75; then
+    if ! wt_yesno "Installation Summary" "$summary" 28 75; then
         fail "Installation cancelled by user."
     fi
 }
@@ -1897,15 +1912,33 @@ main() {
     perform_cleanup false
     
     # Success message
-    local success_msg="Installation completed successfully!\n\n"
-    success_msg+="System configuration:\n"
-    success_msg+="• Hostname: ${INSTALL_HOSTNAME}\n"
-    success_msg+="• User: ${INSTALL_USER}\n"
-    success_msg+="• Desktop: ${INSTALL_DESKTOP_CHOICE}\n\n"
-    success_msg+="The system is ready to boot.\n"
-    success_msg+="Remove the installation media before rebooting."
+    local success_msg=""
     
-    wt_msgbox "Installation Complete" "$success_msg" 18 75 || true
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        success_msg="🎉 Congratulations! Installation Complete!\n\n"
+        success_msg+="Your Arch Linux system is ready to use!\n\n"
+        success_msg+="System configuration:\n"
+        success_msg+="• Hostname: ${INSTALL_HOSTNAME}\n"
+        success_msg+="• User: ${INSTALL_USER}\n"
+        success_msg+="• Desktop: ${INSTALL_DESKTOP_CHOICE}\n\n"
+        success_msg+="📝 NEXT STEPS:\n\n"
+        success_msg+="1. Remove the USB/DVD installation media\n"
+        success_msg+="2. Reboot your computer\n"
+        success_msg+="3. Log in with your username and password\n"
+        success_msg+="4. Enjoy your new Arch Linux system!\n\n"
+        success_msg+="💡 TIP: After first login, run 'sudo pacman -Syu'\n"
+        success_msg+="to check for system updates."
+    else
+        success_msg="Installation completed successfully!\n\n"
+        success_msg+="System configuration:\n"
+        success_msg+="• Hostname: ${INSTALL_HOSTNAME}\n"
+        success_msg+="• User: ${INSTALL_USER}\n"
+        success_msg+="• Desktop: ${INSTALL_DESKTOP_CHOICE}\n\n"
+        success_msg+="The system is ready to boot.\n"
+        success_msg+="Remove the installation media before rebooting."
+    fi
+    
+    wt_msgbox "Installation Complete" "$success_msg" 22 75 || true
     
     # Ask user if they want to reboot now
     if wt_yesno "Reboot System" "Would you like to reboot now?\n\nMake sure to remove the installation media." 10 60; then
