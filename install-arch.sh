@@ -8,8 +8,6 @@ IFS=$'\n\t'
 
 # --- Global Configuration Variables ------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_VERSION="2.0.0"
-BACKTITLE="Arch Linux Installer v${SCRIPT_VERSION} - TUI Mode"
 
 # TUI Configuration - Using gum for modern interface
 TUI_AVAILABLE=false
@@ -23,7 +21,6 @@ INSTALL_KEYMAP="us"
 INSTALL_ROOT_PASSWORD=""
 INSTALL_USER=""
 INSTALL_USER_PASSWORD=""
-INSTALL_PACKAGES=""
 INSTALL_FILESYSTEM="ext4"
 INSTALL_USE_LVM=false
 INSTALL_VG_NAME="archvg"
@@ -52,7 +49,6 @@ TARGET_DISK=""
 PART_SUFFIX=""
 PART_BOOT=""
 PART_ROOT=""
-FILESYSTEM_TYPE=""
 ROOT_DEVICE=""
 ENCRYPTED_DEVICE=""
 OPENED_LUKS=false
@@ -175,9 +171,9 @@ wt_passwordbox() {
 wt_menu() {
     local title="$1"
     local message="$2"
-    local height="$3"
-    local width="$4"
-    local menu_height="$5"
+    local _height="$3"
+    local _width="$4"
+    local _menu_height="$5"
     shift 5
     
     # Show title if provided
@@ -205,15 +201,15 @@ wt_menu() {
     selection=$(printf '%s\n' "${items[@]}" | gum choose --header "$message" 2>/dev/null) || return 1
     
     # Extract just the tag (before the " - ")
-    echo "$selection" | sed 's/ - .*//'
+    echo "${selection%% - *}"
 }
 
 wt_checklist() {
     local title="$1"
     local message="$2"
-    local height="$3"
-    local width="$4"
-    local list_height="$5"
+    local _height="$3"
+    local _width="$4"
+    local _list_height="$5"
     shift 5
     
     # Show title if provided
@@ -239,8 +235,6 @@ wt_checklist() {
     
     # Show multi-select checklist
     local selections
-    # Build gum choose command with common options
-    local gum_cmd="gum choose --no-limit --header \"$message\""
     
     if [[ ${#selected[@]} -gt 0 ]]; then
         # With pre-selected items
@@ -1445,7 +1439,6 @@ main() {
     
     TARGET_DISK="$INSTALL_DISK"
     PART_SUFFIX=$(partition_suffix_for "$TARGET_DISK")
-    FILESYSTEM_TYPE="$INSTALL_FILESYSTEM"
     
     trap cleanup EXIT
     
