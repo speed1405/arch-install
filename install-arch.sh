@@ -139,7 +139,8 @@ wt_inputbox() {
     local title="$1"
     local message="$2"
     local default="${3:-}"
-    # height and width params ignored - gum handles sizing automatically
+    local _height="${4:-}"
+    local _width="${5:-}"
     
     # Show title if provided
     if [[ -n "$title" ]]; then
@@ -157,7 +158,8 @@ wt_inputbox() {
 wt_passwordbox() {
     local title="$1"
     local message="$2"
-    # height and width params ignored - gum handles sizing automatically
+    local _height="${3:-}"
+    local _width="${4:-}"
     
     # Show title if provided
     if [[ -n "$title" ]]; then
