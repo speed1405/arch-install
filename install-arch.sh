@@ -600,7 +600,7 @@ select_filesystem() {
         fs_info+="For most users, ext4 is the best choice.\n\n"
     fi
     
-    fs_info+="• ext4 ⭐ RECOMMENDED FOR BEGINNERS:\n"
+    fs_info+="• ext4 ⭐ RECOMMENDED:\n"
     fs_info+="  - Traditional, stable, and well-tested\n"
     fs_info+="  - Best for: General use, maximum compatibility\n"
     fs_info+="  - Features: Journaling, proven reliability\n"
@@ -646,7 +646,7 @@ select_layout() {
         layout_info+="For beginners, 'Single Partition' is simplest and works great.\n\n"
     fi
     
-    layout_info+="• Single Partition ⭐ RECOMMENDED FOR BEGINNERS:\n"
+    layout_info+="• Single Partition ⭐ RECOMMENDED:\n"
     layout_info+="  - One partition for everything - simplest option\n"
     layout_info+="  - Easy to understand and maintain\n"
     layout_info+="  - Best for: Beginners, simple setups\n"
@@ -772,13 +772,17 @@ select_encryption() {
                 continue
             fi
             
-            # Enforce minimum 8 characters in beginner mode for security
-            if [[ "$BEGINNER_MODE" == "true" ]] && [[ ${#pass1} -lt 8 ]]; then
-                wt_msgbox "Passphrase Too Short" "Error: Your passphrase is too short (${#pass1} characters).\n\nMinimum required: 8 characters\nRecommended: 12+ characters for better security\n\nPlease enter a longer passphrase." 12 65
+            # Enforce minimum 8 characters for security (all users)
+            if [[ ${#pass1} -lt 8 ]]; then
+                if [[ "$BEGINNER_MODE" == "true" ]]; then
+                    wt_msgbox "Passphrase Too Short" "Error: Your passphrase is too short (${#pass1} characters).\n\nMinimum required: 8 characters\nRecommended: 12+ characters for better security\n\nPlease enter a longer passphrase." 12 65
+                else
+                    wt_msgbox "Passphrase Too Short" "Passphrase must be at least 8 characters.\nCurrent length: ${#pass1}\n\nPlease enter a longer passphrase." 10 60
+                fi
                 continue
             fi
             
-            # Warn about weak but acceptable passphrases (8-11 chars)
+            # Warn about weak but acceptable passphrases (8-11 chars) in beginner mode
             if [[ "$BEGINNER_MODE" == "true" ]] && [[ ${#pass1} -ge 8 ]] && [[ ${#pass1} -lt 12 ]]; then
                 if ! wt_yesno "Weak Passphrase" "Warning: Your passphrase is acceptable but weak (${#pass1} characters).\n\nFor better security, use at least 12 characters.\n\nDo you want to continue with this passphrase?" 12 70; then
                     continue
