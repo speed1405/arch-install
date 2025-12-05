@@ -600,12 +600,12 @@ select_filesystem() {
         fs_info+="For most users, ext4 is the best choice.\n\n"
     fi
     
-    fs_info+="• ext4 (RECOMMENDED FOR BEGINNERS):\n"
+    fs_info+="• ext4 ⭐ RECOMMENDED FOR BEGINNERS:\n"
     fs_info+="  - Traditional, stable, and well-tested\n"
     fs_info+="  - Best for: General use, maximum compatibility\n"
     fs_info+="  - Features: Journaling, proven reliability\n"
     fs_info+="  - Used by millions of Linux systems worldwide\n\n"
-    fs_info+="• Btrfs (Advanced users):\n"
+    fs_info+="• Btrfs (Advanced):\n"
     fs_info+="  - Modern copy-on-write filesystem\n"
     fs_info+="  - Best for: Advanced users, snapshot needs\n"
     fs_info+="  - Features: Snapshots, compression, subvolumes\n"
@@ -646,12 +646,12 @@ select_layout() {
         layout_info+="For beginners, 'Single Partition' is simplest and works great.\n\n"
     fi
     
-    layout_info+="• Single Partition (RECOMMENDED FOR BEGINNERS):\n"
+    layout_info+="• Single Partition ⭐ RECOMMENDED FOR BEGINNERS:\n"
     layout_info+="  - One partition for everything - simplest option\n"
     layout_info+="  - Easy to understand and maintain\n"
     layout_info+="  - Best for: Beginners, simple setups\n"
     layout_info+="  - Perfect for most desktop/laptop users\n\n"
-    layout_info+="• LVM (Logical Volume Management - Advanced):\n"
+    layout_info+="• LVM - Logical Volume Management (Advanced):\n"
     layout_info+="  - Flexible volume sizing and management\n"
     layout_info+="  - Can resize partitions later\n"
     layout_info+="  - Best for: Users wanting future flexibility\n"
@@ -773,7 +773,9 @@ select_encryption() {
             fi
             
             if [[ "$BEGINNER_MODE" == "true" ]] && [[ ${#pass1} -lt 8 ]]; then
-                wt_msgbox "Weak Passphrase" "Warning: Your passphrase is very short.\n\nFor better security, use at least 12 characters.\n\nContinue anyway?" 10 60
+                if ! wt_yesno "Weak Passphrase" "Warning: Your passphrase is very short (${#pass1} characters).\n\nFor better security, use at least 12 characters.\n\nDo you want to continue with this passphrase?" 12 65; then
+                    continue
+                fi
             fi
             
             pass2=$(wt_passwordbox "Confirm Passphrase" "Re-enter passphrase to confirm:" 10 60)
