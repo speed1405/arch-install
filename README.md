@@ -1,6 +1,19 @@
 # Arch Linux Installer with Gum TUI
 
-`install-arch.sh` is a modern, user-friendly installer built from scratch with a gum-based TUI (Text User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress indicators. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+`install-arch.sh` is a modern, user-friendly installer built from scratch with a gum-based TUI (Text User Interface). It runs from the official Arch ISO and guides you through the installation process with interactive menus and progress indicators. The installer auto-detects hardware (boot mode, CPU, GPU, memory, virtualization) and provides an intuitive workflow for configuring your system. **Now with Beginner Mode** for first-time Linux users! Pair it with `install-desktop.sh` to add full desktop environments like GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Sway, or i3.
+
+## ✨ New: Beginner Mode
+
+The installer now features a **Beginner Mode** designed specifically for new Linux users:
+
+- **📚 Simplified Options**: Recommended choices clearly marked with ⭐ symbols
+- **📖 Clear Explanations**: Technical terms explained in plain language
+- **💡 Helpful Tips**: Guidance throughout the installation process
+- **✅ Pre-Installation Checklist**: Ensure you're ready before starting
+- **🔒 Encryption Guide**: Understand pros/cons before deciding
+- **👤 User-Friendly Prompts**: Step-by-step account and system setup
+
+Beginner Mode provides the same powerful installation capabilities but with extra guidance and explanations to help you make informed decisions.
 
 ## TUI Tool
 
@@ -26,23 +39,25 @@ The installer will check for gum at startup and guide you to install it if neede
 The installer uses a gum-based TUI to provide a friendly, text-based installation experience with progress indicators:
 
 1. **Welcome Screen** - Introduces the installer and its features
-2. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
-3. **Disk Selection** - Interactive menu to choose installation disk with confirmation
-4. **Filesystem Type** - Choose between ext4 (traditional) or Btrfs (modern with snapshots)
-5. **Partition Layout** - Select layout:
-   - Single partition (simple)
+2. **Mode Selection** - Choose between Beginner Mode (with extra guidance) or Advanced Mode
+3. **Pre-Installation Checklist** - (Beginner Mode) Ensure you're prepared for installation
+4. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
+5. **Disk Selection** - Interactive menu to choose installation disk with confirmation
+6. **Filesystem Type** - Choose between ext4 (traditional) or Btrfs (modern with snapshots)
+7. **Partition Layout** - Select layout:
+   - Single partition (simple) ⭐ Recommended for beginners
    - LVM (flexible volume management)
    - LVM with separate /home
    - Btrfs subvolumes (@, @home, @var_log, etc.)
-6. **Disk Encryption** - Optional LUKS encryption with secure passphrase entry
-7. **System Settings** - Configure hostname, timezone, locale, and keyboard layout via menus
-8. **User Accounts** - Set up root and primary user with secure password prompts
-9. **Mirror Selection** - Choose package mirror region for faster downloads (Worldwide, US, Europe, Asia, etc.)
-10. **Desktop Environment** - Choose from 10 desktop options or minimal install
-11. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
-12. **Installation Summary** - Review all settings before proceeding
-13. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
-14. **Completion** - Success message with next steps
+8. **Disk Encryption** - Optional LUKS encryption with detailed explanation and secure passphrase entry
+9. **System Settings** - Configure hostname, timezone, locale, and keyboard layout via menus
+10. **User Accounts** - Set up root and primary user with secure password prompts
+11. **Mirror Selection** - Choose package mirror region for faster downloads (Worldwide, US, Europe, Asia, etc.)
+12. **Desktop Environment** - Choose from 10 desktop options or minimal install
+13. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
+14. **Installation Summary** - Review all settings before proceeding
+15. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
+16. **Completion** - Success message with next steps
 
 All user interaction happens through gum TUI menus with progress indicators, making the installation process intuitive and providing clear feedback on progress.
 

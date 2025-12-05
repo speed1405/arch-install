@@ -39,6 +39,7 @@ INSTALL_BUNDLE_CHOICES=()
 INSTALL_MIRROR_REGION="Worldwide"
 BTRFS_MOUNT_OPTS="compress=zstd,autodefrag"
 BTRFS_SUBVOLUMES="@:/ @home:/home @var_log:/var/log @var_cache:/var/cache @snapshots:/.snapshots"
+BEGINNER_MODE=false
 
 # Runtime state
 MOUNTED=false
@@ -440,6 +441,59 @@ show_welcome() {
         log_info "Installation cancelled by user at welcome screen."
         exit 0
     fi
+    
+    # Ask if user wants beginner mode
+    local mode_message="Would you like to use Beginner Mode?\n\n"
+    mode_message+="📚 BEGINNER MODE (Recommended for new users):\n"
+    mode_message+="• Simplified options with recommended choices\n"
+    mode_message+="• Clear explanations for technical terms\n"
+    mode_message+="• Safe, tested defaults pre-selected\n"
+    mode_message+="• Step-by-step guidance\n\n"
+    mode_message+="🔧 ADVANCED MODE:\n"
+    mode_message+="• Full control over all options\n"
+    mode_message+="• Advanced partitioning schemes\n"
+    mode_message+="• Custom configurations\n\n"
+    mode_message+="Select 'Yes' for Beginner Mode, 'No' for Advanced Mode."
+    
+    if wt_yesno "Installation Mode" "$mode_message" 20 75; then
+        BEGINNER_MODE=true
+        log_info "Beginner mode enabled"
+        wt_msgbox "Beginner Mode" "Beginner mode activated! ✓\n\nYou'll see:\n• Recommended options marked clearly\n• Detailed explanations\n• Simpler choices\n\nYou can still customize your installation!" 14 70 || true
+    else
+        BEGINNER_MODE=false
+        log_info "Advanced mode selected"
+    fi
+}
+
+show_requirements_checklist() {
+    if [[ "$BEGINNER_MODE" != "true" ]]; then
+        return  # Skip for advanced users
+    fi
+    
+    local checklist="Pre-Installation Checklist\n\n"
+    checklist+="Before we begin, please ensure you have:\n\n"
+    checklist+="✓ Booted from Arch Linux ISO\n"
+    checklist+="✓ Active internet connection (will be verified)\n"
+    checklist+="✓ Backed up any important data\n"
+    checklist+="✓ At least 20 GB of free disk space\n"
+    checklist+="✓ Know which disk to install on\n\n"
+    checklist+="⚠️ IMPORTANT WARNINGS:\n\n"
+    checklist+="• The selected disk will be COMPLETELY ERASED\n"
+    checklist+="• Double-check disk selection carefully\n"
+    checklist+="• Installation takes 15-30 minutes\n"
+    checklist+="• Do not power off during installation\n\n"
+    checklist+="📝 What you'll need to decide:\n\n"
+    checklist+="• Disk encryption (yes/no)\n"
+    checklist+="• Computer name (hostname)\n"
+    checklist+="• Your timezone\n"
+    checklist+="• User account name and passwords\n"
+    checklist+="• Desktop environment preference\n\n"
+    checklist+="Ready to continue?"
+    
+    if ! wt_yesno "Ready to Install?" "$checklist" 28 70; then
+        log_info "Installation cancelled by user at requirements check."
+        exit 0
+    fi
 }
 
 show_hardware_summary() {
@@ -540,19 +594,41 @@ select_disk() {
 select_filesystem() {
     # Show filesystem information first
     local fs_info="Filesystem Information:\n\n"
-    fs_info+="• ext4: Traditional, stable, and well-tested\n"
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        fs_info+="A filesystem determines how your data is stored on disk.\n"
+        fs_info+="For most users, ext4 is the best choice.\n\n"
+    fi
+    
+    fs_info+="• ext4 (RECOMMENDED FOR BEGINNERS):\n"
+    fs_info+="  - Traditional, stable, and well-tested\n"
     fs_info+="  - Best for: General use, maximum compatibility\n"
-    fs_info+="  - Features: Journaling, proven reliability\n\n"
-    fs_info+="• Btrfs: Modern copy-on-write filesystem\n"
+    fs_info+="  - Features: Journaling, proven reliability\n"
+    fs_info+="  - Used by millions of Linux systems worldwide\n\n"
+    fs_info+="• Btrfs (Advanced users):\n"
+    fs_info+="  - Modern copy-on-write filesystem\n"
     fs_info+="  - Best for: Advanced users, snapshot needs\n"
-    fs_info+="  - Features: Snapshots, compression, subvolumes\n\n"
-    fs_info+="Choose the filesystem that best fits your needs."
-    wt_msgbox "Filesystem Information" "$fs_info" 18 75 || true
+    fs_info+="  - Features: Snapshots, compression, subvolumes\n"
+    fs_info+="  - Newer technology, more complex setup\n\n"
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        fs_info+="💡 TIP: If unsure, choose ext4. It's reliable and proven."
+    else
+        fs_info+="Choose the filesystem that best fits your needs."
+    fi
+    
+    wt_msgbox "Filesystem Information" "$fs_info" 22 75 || true
     
     local fs_choice
-    fs_choice=$(wt_menu "Filesystem Type" "Select the root filesystem type:" 15 70 4 \
-        "1" "ext4 - Traditional Linux filesystem (recommended)" \
-        "2" "btrfs - Modern CoW filesystem with snapshots")
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        fs_choice=$(wt_menu "Filesystem Type" "Select the root filesystem type:" 15 75 4 \
+            "1" "ext4 - Traditional Linux filesystem ⭐ RECOMMENDED" \
+            "2" "btrfs - Modern CoW filesystem (Advanced)")
+    else
+        fs_choice=$(wt_menu "Filesystem Type" "Select the root filesystem type:" 15 70 4 \
+            "1" "ext4 - Traditional Linux filesystem (recommended)" \
+            "2" "btrfs - Modern CoW filesystem with snapshots")
+    fi
     
     case "$fs_choice" in
         1) INSTALL_FILESYSTEM="ext4" ;;
@@ -564,27 +640,65 @@ select_filesystem() {
 select_layout() {
     # Show partition layout information first
     local layout_info="Partition Layout Information:\n\n"
-    layout_info+="• Single Partition: Simplest option\n"
-    layout_info+="  - One partition for everything\n"
-    layout_info+="  - Best for: Beginners, simple setups\n\n"
-    layout_info+="• LVM: Logical Volume Management\n"
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        layout_info+="This determines how your disk is organized.\n"
+        layout_info+="For beginners, 'Single Partition' is simplest and works great.\n\n"
+    fi
+    
+    layout_info+="• Single Partition (RECOMMENDED FOR BEGINNERS):\n"
+    layout_info+="  - One partition for everything - simplest option\n"
+    layout_info+="  - Easy to understand and maintain\n"
+    layout_info+="  - Best for: Beginners, simple setups\n"
+    layout_info+="  - Perfect for most desktop/laptop users\n\n"
+    layout_info+="• LVM (Logical Volume Management - Advanced):\n"
     layout_info+="  - Flexible volume sizing and management\n"
-    layout_info+="  - Best for: Users wanting flexibility\n\n"
-    layout_info+="• LVM with /home: Separate home partition\n"
+    layout_info+="  - Can resize partitions later\n"
+    layout_info+="  - Best for: Users wanting future flexibility\n"
+    layout_info+="  - More complex to manage\n\n"
+    layout_info+="• LVM with /home (Advanced):\n"
     layout_info+="  - Keeps user data separate from system\n"
-    layout_info+="  - Best for: Multi-user systems, data safety\n\n"
-    layout_info+="• Btrfs Subvolumes: Advanced Btrfs features\n"
-    layout_info+="  - Automatic snapshots support\n"
-    layout_info+="  - Best for: Advanced users, system rollback needs\n\n"
-    layout_info+="Choose the layout that best fits your needs."
-    wt_msgbox "Layout Information" "$layout_info" 24 75 || true
+    layout_info+="  - Easier to reinstall OS without losing data\n"
+    layout_info+="  - Best for: Multi-user systems, data safety\n"
+    layout_info+="  - Requires understanding of partitions\n\n"
+    
+    if [[ "$INSTALL_FILESYSTEM" == "btrfs" ]]; then
+        layout_info+="• Btrfs Subvolumes (Advanced Btrfs users):\n"
+        layout_info+="  - Automatic snapshots support\n"
+        layout_info+="  - System rollback capability\n"
+        layout_info+="  - Best for: Advanced users, system rollback needs\n"
+        layout_info+="  - Requires Btrfs knowledge\n\n"
+    fi
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        layout_info+="💡 TIP: Choose 'Single Partition' for a simple, reliable setup."
+    else
+        layout_info+="Choose the layout that best fits your needs."
+    fi
+    
+    wt_msgbox "Layout Information" "$layout_info" 26 78 || true
     
     local layout_choice
-    layout_choice=$(wt_menu "Partition Layout" "Select partition layout:" 18 75 5 \
-        "1" "Single partition - Simple root partition only" \
-        "2" "LVM - Logical Volume Management for flexibility" \
-        "3" "LVM with separate /home - Split root and home volumes" \
-        "4" "Btrfs subvolumes - Btrfs with @, @home, etc.")
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        if [[ "$INSTALL_FILESYSTEM" == "btrfs" ]]; then
+            layout_choice=$(wt_menu "Partition Layout" "Select partition layout:" 18 78 5 \
+                "1" "Single partition ⭐ RECOMMENDED" \
+                "2" "LVM - Flexible storage (Advanced)" \
+                "3" "LVM with /home - Separate user data (Advanced)" \
+                "4" "Btrfs subvolumes (Advanced)")
+        else
+            layout_choice=$(wt_menu "Partition Layout" "Select partition layout:" 18 78 4 \
+                "1" "Single partition ⭐ RECOMMENDED" \
+                "2" "LVM - Flexible storage (Advanced)" \
+                "3" "LVM with /home - Separate user data (Advanced)")
+        fi
+    else
+        layout_choice=$(wt_menu "Partition Layout" "Select partition layout:" 18 75 5 \
+            "1" "Single partition - Simple root partition only" \
+            "2" "LVM - Logical Volume Management for flexibility" \
+            "3" "LVM with separate /home - Split root and home volumes" \
+            "4" "Btrfs subvolumes - Btrfs with @, @home, etc.")
+    fi
     
     case "$layout_choice" in
         1)
@@ -615,8 +729,39 @@ select_layout() {
 }
 
 select_encryption() {
-    if wt_yesno "Disk Encryption" "Enable LUKS disk encryption?\n\nThis will encrypt your root partition for security.\nYou will need to enter a passphrase at boot." 12 70; then
+    local encrypt_message=""
+    
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        encrypt_message="Enable disk encryption?\n\n"
+        encrypt_message+="🔒 WHAT IS DISK ENCRYPTION?\n"
+        encrypt_message+="Encryption scrambles your data so only someone with your\n"
+        encrypt_message+="passphrase can read it. This protects your data if your\n"
+        encrypt_message+="computer is lost or stolen.\n\n"
+        encrypt_message+="✅ PROS:\n"
+        encrypt_message+="• Strong protection for your personal data\n"
+        encrypt_message+="• Peace of mind for laptops\n"
+        encrypt_message+="• Industry-standard security (LUKS)\n\n"
+        encrypt_message+="⚠️ CONS:\n"
+        encrypt_message+="• Must enter passphrase every boot\n"
+        encrypt_message+="• Slight performance overhead (usually unnoticeable)\n"
+        encrypt_message+="• Cannot recover data if passphrase is forgotten\n\n"
+        encrypt_message+="💡 RECOMMENDATION:\n"
+        encrypt_message+="• Laptops: Yes (recommended)\n"
+        encrypt_message+="• Desktops: Optional (your choice)\n"
+        encrypt_message+="• Shared computers: No (inconvenient for multiple users)\n\n"
+        encrypt_message+="Enable encryption now?"
+    else
+        encrypt_message="Enable LUKS disk encryption?\n\n"
+        encrypt_message+="This will encrypt your root partition for security.\n"
+        encrypt_message+="You will need to enter a passphrase at boot."
+    fi
+    
+    if wt_yesno "Disk Encryption" "$encrypt_message" 24 75; then
         INSTALL_USE_LUKS=true
+        
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            wt_msgbox "Encryption Tips" "Creating a strong passphrase:\n\n• Use at least 12-15 characters\n• Mix letters, numbers, and symbols\n• Avoid common words or patterns\n• Don't use personal information\n• Consider a passphrase like: 'correct-horse-battery-staple'\n\n⚠️ IMPORTANT: Write down your passphrase!\nIf you forget it, your data cannot be recovered." 18 75 || true
+        fi
         
         while true; do
             local pass1 pass2
@@ -625,6 +770,10 @@ select_encryption() {
             if [[ -z $pass1 ]]; then
                 wt_msgbox "Error" "Passphrase cannot be empty." 8 50
                 continue
+            fi
+            
+            if [[ "$BEGINNER_MODE" == "true" ]] && [[ ${#pass1} -lt 8 ]]; then
+                wt_msgbox "Weak Passphrase" "Warning: Your passphrase is very short.\n\nFor better security, use at least 12 characters.\n\nContinue anyway?" 10 60
             fi
             
             pass2=$(wt_passwordbox "Confirm Passphrase" "Re-enter passphrase to confirm:" 10 60)
@@ -638,15 +787,27 @@ select_encryption() {
         done
     else
         INSTALL_USE_LUKS=false
+        
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            wt_msgbox "No Encryption" "Disk encryption disabled.\n\nYour data will not be encrypted.\n\nYou can always reinstall later with encryption if needed." 10 60 || true
+        fi
     fi
 }
 
 configure_system_settings() {
     # Hostname
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        wt_msgbox "Hostname" "The hostname is your computer's name on the network.\n\n💡 Examples: 'my-laptop', 'arch-desktop', 'workstation'\n\nRules:\n• Use lowercase letters, numbers, and hyphens\n• No spaces or special characters\n• Keep it simple and memorable" 14 70 || true
+    fi
+    
     INSTALL_HOSTNAME=$(wt_inputbox "Hostname" "Enter system hostname:" "$INSTALL_HOSTNAME" 10 60)
     [[ -n $INSTALL_HOSTNAME ]] || INSTALL_HOSTNAME="archlinux"
     
     # Timezone selection
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        wt_msgbox "Timezone" "Select your timezone to ensure correct time display.\n\nThis affects:\n• System clock\n• File timestamps\n• Scheduled tasks\n\nChoose the timezone closest to your location." 14 70 || true
+    fi
+    
     local tz_choice
     tz_choice=$(wt_menu "Timezone" "Select your timezone region:" 22 70 11 \
         "1" "America/New_York (US East)" \
@@ -677,6 +838,10 @@ configure_system_settings() {
     esac
     
     # Locale selection
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        wt_msgbox "Locale" "The locale determines:\n• Language for system messages\n• Date and time formats\n• Number formats\n• Currency symbols\n\nSelect your preferred language and region." 14 70 || true
+    fi
+    
     local locale_choice
     locale_choice=$(wt_menu "Locale" "Select system locale:" 18 70 8 \
         "1" "en_US.UTF-8 (US English)" \
@@ -698,6 +863,10 @@ configure_system_settings() {
     esac
     
     # Keyboard layout
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        wt_msgbox "Keyboard Layout" "Select the keyboard layout that matches your physical keyboard.\n\nThis ensures keys produce the correct characters.\n\nMost users in the US should choose 'us'." 12 70 || true
+    fi
+    
     local keymap_choice
     keymap_choice=$(wt_menu "Keyboard Layout" "Select keyboard layout:" 18 70 8 \
         "1" "us (US English)" \
@@ -719,6 +888,10 @@ configure_system_settings() {
 
 configure_users() {
     # Root password
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        wt_msgbox "User Accounts" "You need to create two accounts:\n\n1. ROOT account - System administrator\n   • Has full control over the system\n   • Use only when needed for system tasks\n\n2. USER account - Your daily account\n   • For everyday use\n   • Safer than using root\n\nYou'll create passwords for both accounts." 16 70 || true
+    fi
+    
     while true; do
         local pass1 pass2
         pass1=$(wt_passwordbox "Root Password" "Enter root password:" 10 60)
@@ -739,6 +912,10 @@ configure_users() {
     done
     
     # User account
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        wt_msgbox "User Account" "Now create your everyday user account.\n\n💡 Username tips:\n• Use lowercase letters only\n• No spaces or special characters\n• Examples: 'john', 'alice', 'myname'\n\nThis is the account you'll use for daily tasks." 14 70 || true
+    fi
+    
     INSTALL_USER=$(wt_inputbox "User Account" "Enter username for primary user account:" "archer" 10 60)
     [[ -n $INSTALL_USER ]] || INSTALL_USER="archer"
     
@@ -763,19 +940,47 @@ configure_users() {
 }
 
 select_desktop() {
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        local desktop_info="Desktop Environment Selection\n\n"
+        desktop_info+="A desktop environment provides the graphical interface\n"
+        desktop_info+="(windows, menus, taskbar, etc.) for your system.\n\n"
+        desktop_info+="💡 RECOMMENDATIONS FOR BEGINNERS:\n\n"
+        desktop_info+="• GNOME - Modern, polished, easy to use\n"
+        desktop_info+="• KDE Plasma - Windows-like, highly customizable\n"
+        desktop_info+="• XFCE - Fast, simple, uses less resources\n\n"
+        desktop_info+="Advanced users may choose i3 or Sway (keyboard-focused)\n"
+        desktop_info+="or 'No desktop' for servers."
+        wt_msgbox "Desktop Environments" "$desktop_info" 20 70 || true
+    fi
+    
     local desktop_choice
-    desktop_choice=$(wt_menu "Desktop Environment" "Select a desktop environment to install:" 20 75 11 \
-        "none" "No desktop (server/minimal install)" \
-        "gnome" "GNOME - Modern, feature-rich desktop" \
-        "kde" "KDE Plasma - Customizable and powerful" \
-        "xfce" "XFCE - Lightweight and fast" \
-        "cinnamon" "Cinnamon - Traditional desktop experience" \
-        "mate" "MATE - Classic GNOME 2 desktop" \
-        "budgie" "Budgie - Clean and elegant" \
-        "lxqt" "LXQt - Lightweight Qt desktop" \
-        "sway" "Sway - Tiling Wayland compositor" \
-        "i3" "i3 - Tiling window manager" \
-)
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        desktop_choice=$(wt_menu "Desktop Environment" "Select a desktop environment to install:" 20 78 11 \
+            "gnome" "GNOME - Modern, polished ⭐ BEGINNER FRIENDLY" \
+            "kde" "KDE Plasma - Customizable, Windows-like ⭐ BEGINNER FRIENDLY" \
+            "xfce" "XFCE - Lightweight, simple ⭐ BEGINNER FRIENDLY" \
+            "cinnamon" "Cinnamon - Traditional layout, familiar" \
+            "mate" "MATE - Classic desktop, stable" \
+            "budgie" "Budgie - Clean and elegant" \
+            "lxqt" "LXQt - Very lightweight Qt desktop" \
+            "sway" "Sway - Tiling Wayland (Advanced)" \
+            "i3" "i3 - Tiling window manager (Advanced)" \
+            "none" "No desktop (Server/Minimal install)" \
+        )
+    else
+        desktop_choice=$(wt_menu "Desktop Environment" "Select a desktop environment to install:" 20 75 11 \
+            "none" "No desktop (server/minimal install)" \
+            "gnome" "GNOME - Modern, feature-rich desktop" \
+            "kde" "KDE Plasma - Customizable and powerful" \
+            "xfce" "XFCE - Lightweight and fast" \
+            "cinnamon" "Cinnamon - Traditional desktop experience" \
+            "mate" "MATE - Classic GNOME 2 desktop" \
+            "budgie" "Budgie - Clean and elegant" \
+            "lxqt" "LXQt - Lightweight Qt desktop" \
+            "sway" "Sway - Tiling Wayland compositor" \
+            "i3" "i3 - Tiling window manager" \
+        )
+    fi
     
     INSTALL_DESKTOP_CHOICE="${desktop_choice:-none}"
 }
@@ -784,13 +989,36 @@ select_bundles() {
     local bundle_dir="${SCRIPT_DIR}"
     local bundles=()
     
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        local bundle_info="Additional Software Bundles\n\n"
+        bundle_info+="Bundles are collections of related software.\n"
+        bundle_info+="Select bundles based on what you plan to do:\n\n"
+        bundle_info+="💡 RECOMMENDATIONS FOR BEGINNERS:\n\n"
+        bundle_info+="• Desktop Utilities - Web browser, office, etc.\n"
+        bundle_info+="  (Recommended for most desktop users)\n\n"
+        bundle_info+="• AUR Helper - Access to community packages\n"
+        bundle_info+="  (Useful for most users)\n\n"
+        bundle_info+="• Optimization - Better performance\n"
+        bundle_info+="  (Recommended for all users)\n\n"
+        bundle_info+="You can always install more software later!"
+        wt_msgbox "Software Bundles" "$bundle_info" 22 70 || true
+    fi
+    
     # Check for available bundle scripts
     # Core/Essential bundles first
     if [[ -f "${bundle_dir}/aur-helper.sh" ]]; then
-        bundles+=("aur-helper" "AUR helper (yay/paru for AUR access)" OFF)
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            bundles+=("aur-helper" "AUR helper - Access community packages ⭐ RECOMMENDED" OFF)
+        else
+            bundles+=("aur-helper" "AUR helper (yay/paru for AUR access)" OFF)
+        fi
     fi
     if [[ -f "${bundle_dir}/optimization.sh" ]]; then
-        bundles+=("optimization" "System optimization (zram, pacman, performance)" OFF)
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            bundles+=("optimization" "System optimization ⭐ RECOMMENDED" OFF)
+        else
+            bundles+=("optimization" "System optimization (zram, pacman, performance)" OFF)
+        fi
     fi
     if [[ -f "${bundle_dir}/security.sh" ]]; then
         bundles+=("security" "Security hardening (firewall, antivirus, AppArmor)" OFF)
@@ -803,7 +1031,11 @@ select_bundles() {
     fi
     # Desktop/Application bundles
     if [[ -f "${bundle_dir}/desktop-utilities.sh" ]]; then
-        bundles+=("desktop-utilities" "Desktop utilities (browsers, office)" OFF)
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            bundles+=("desktop-utilities" "Desktop utilities (browser, office) ⭐ RECOMMENDED" OFF)
+        else
+            bundles+=("desktop-utilities" "Desktop utilities (browsers, office)" OFF)
+        fi
     fi
     if [[ -f "${bundle_dir}/dev.sh" ]]; then
         bundles+=("dev" "Developer tools (compilers, Docker, etc.)" OFF)
@@ -827,7 +1059,11 @@ select_bundles() {
     fi
     
     local selected
-    selected=$(wt_checklist "Additional Software" "Select optional software bundles:" 20 75 10 "${bundles[@]}" || echo "")
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        selected=$(wt_checklist "Additional Software" "Select optional software bundles (use space to select):" 22 80 10 "${bundles[@]}" || echo "")
+    else
+        selected=$(wt_checklist "Additional Software" "Select optional software bundles:" 20 75 10 "${bundles[@]}" || echo "")
+    fi
     
     if [[ -n $selected ]]; then
         # Parse all selected bundles (whiptail returns space-separated quoted items)
@@ -840,6 +1076,15 @@ select_bundles() {
 }
 
 select_mirror_region() {
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        local mirror_info="Package Mirror Selection\n\n"
+        mirror_info+="Mirrors are servers that host Arch Linux packages.\n"
+        mirror_info+="Choosing a mirror close to you makes downloads faster.\n\n"
+        mirror_info+="💡 TIP: Select your country or region for best speed.\n"
+        mirror_info+="If unsure, 'Worldwide' works but may be slower.\n"
+        wt_msgbox "Mirror Information" "$mirror_info" 14 70 || true
+    fi
+    
     local region_choice
     region_choice=$(wt_menu "Package Mirror Region" "Select your preferred mirror region for faster downloads:" 22 75 12 \
         "1" "Worldwide (use all mirrors)" \
@@ -1507,6 +1752,7 @@ main() {
     
     # GUI workflow
     show_welcome
+    show_requirements_checklist
     show_hardware_summary
     
     select_disk
