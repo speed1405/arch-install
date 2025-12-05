@@ -405,6 +405,22 @@ get_disks() {
     lsblk -dno NAME,SIZE,TYPE | awk '$3=="disk" {print "/dev/"$1" "$2}'
 }
 
+get_disk_layout() {
+    # Display detailed layout for a specific disk
+    local disk="$1"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT "$disk" 2>/dev/null || echo "Unable to read disk layout"
+}
+
+show_all_disks_layout() {
+    # Show layout of all disks in the system
+    local output=""
+    output+="Current Disk Layout:\n\n"
+    output+="$(lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT 2>/dev/null | head -50)\n\n"
+    output+="This shows all available disks and their partitions.\n"
+    output+="Select a disk to install Arch Linux."
+    echo "$output"
+}
+
 # --- GUI Workflow Functions --------------------------------------------------
 show_welcome() {
     local message="Welcome to the Arch Linux Installer!\n\n"
@@ -461,6 +477,11 @@ show_hardware_summary() {
 }
 
 select_disk() {
+    # First, show the current disk layout to the user
+    local layout_message
+    layout_message=$(show_all_disks_layout)
+    wt_msgbox "Disk Layout" "$layout_message" 25 80 || true
+    
     local disk_list=()
     local idx=1
     
@@ -497,6 +518,14 @@ select_disk() {
     disk_line=$(get_disks | sed -n "$((selected_idx + 1))p")
     INSTALL_DISK=$(echo "$disk_line" | awk '{print $1}')
     
+    # Show detailed layout of the selected disk
+    local disk_layout
+    disk_layout=$(get_disk_layout "$INSTALL_DISK")
+    local detail_msg="Selected Disk Layout:\n\n${disk_layout}\n\n"
+    detail_msg+="Disk: ${INSTALL_DISK}\n\n"
+    detail_msg+="⚠️  Current partitions and data shown above will be ERASED!"
+    wt_msgbox "Selected Disk Details" "$detail_msg" 20 80 || true
+    
     # Confirm disk selection
     local confirm_msg="You have selected:\n\n${INSTALL_DISK}\n\n"
     confirm_msg+="⚠️  ALL DATA ON THIS DISK WILL BE PERMANENTLY ERASED!\n\n"
@@ -508,6 +537,17 @@ select_disk() {
 }
 
 select_filesystem() {
+    # Show filesystem information first
+    local fs_info="Filesystem Information:\n\n"
+    fs_info+="• ext4: Traditional, stable, and well-tested\n"
+    fs_info+="  - Best for: General use, maximum compatibility\n"
+    fs_info+="  - Features: Journaling, proven reliability\n\n"
+    fs_info+="• Btrfs: Modern copy-on-write filesystem\n"
+    fs_info+="  - Best for: Advanced users, snapshot needs\n"
+    fs_info+="  - Features: Snapshots, compression, subvolumes\n\n"
+    fs_info+="Choose the filesystem that best fits your needs."
+    wt_msgbox "Filesystem Information" "$fs_info" 18 75 || true
+    
     local fs_choice
     fs_choice=$(wt_menu "Filesystem Type" "Select the root filesystem type:" 15 70 4 \
         "1" "ext4 - Traditional Linux filesystem (recommended)" \
@@ -521,6 +561,23 @@ select_filesystem() {
 }
 
 select_layout() {
+    # Show partition layout information first
+    local layout_info="Partition Layout Information:\n\n"
+    layout_info+="• Single Partition: Simplest option\n"
+    layout_info+="  - One partition for everything\n"
+    layout_info+="  - Best for: Beginners, simple setups\n\n"
+    layout_info+="• LVM: Logical Volume Management\n"
+    layout_info+="  - Flexible volume sizing and management\n"
+    layout_info+="  - Best for: Users wanting flexibility\n\n"
+    layout_info+="• LVM with /home: Separate home partition\n"
+    layout_info+="  - Keeps user data separate from system\n"
+    layout_info+="  - Best for: Multi-user systems, data safety\n\n"
+    layout_info+="• Btrfs Subvolumes: Advanced Btrfs features\n"
+    layout_info+="  - Automatic snapshots support\n"
+    layout_info+="  - Best for: Advanced users, system rollback needs\n\n"
+    layout_info+="Choose the layout that best fits your needs."
+    wt_msgbox "Layout Information" "$layout_info" 24 75 || true
+    
     local layout_choice
     layout_choice=$(wt_menu "Partition Layout" "Select partition layout:" 18 75 5 \
         "1" "Single partition - Simple root partition only" \
@@ -822,6 +879,34 @@ show_installation_summary() {
     summary+="LVM: $(is_true "$INSTALL_USE_LVM" && echo "Enabled" || echo "Disabled")\n"
     summary+="Boot Mode: ${BOOT_MODE}\n"
     summary+="Bootloader: ${SELECTED_BOOTLOADER}\n\n"
+    
+    # Show planned partition layout
+    summary+="Planned Partition Layout:\n"
+    if [[ $BOOT_MODE == "uefi" ]]; then
+        summary+="  • EFI Partition: 512 MB (FAT32)\n"
+        summary+="  • Root Partition: Remaining space (${INSTALL_FILESYSTEM})\n"
+    else
+        summary+="  • BIOS Boot: 1 MB\n"
+        summary+="  • Root Partition: Remaining space (${INSTALL_FILESYSTEM})\n"
+    fi
+    
+    if is_true "$INSTALL_USE_LUKS"; then
+        summary+="  • LUKS Encryption: Enabled on root\n"
+    fi
+    
+    if is_true "$INSTALL_USE_LVM"; then
+        if [[ $INSTALL_LAYOUT == "lvm-home" ]]; then
+            summary+="  • LVM: ${INSTALL_LV_ROOT_NAME} (${INSTALL_LV_ROOT_SIZE}), ${INSTALL_LV_HOME_NAME} (${INSTALL_LV_HOME_SIZE})\n"
+        else
+            summary+="  • LVM: ${INSTALL_LV_ROOT_NAME} (100%)\n"
+        fi
+    fi
+    
+    if [[ $INSTALL_FILESYSTEM == "btrfs" && $INSTALL_LAYOUT == "btrfs-subvols" ]]; then
+        summary+="  • Btrfs Subvolumes: @, @home, @var_log, @var_cache, @snapshots\n"
+    fi
+    summary+="\n"
+    
     summary+="Hostname: ${INSTALL_HOSTNAME}\n"
     summary+="Timezone: ${INSTALL_TIMEZONE}\n"
     summary+="Locale: ${INSTALL_LOCALE}\n"
