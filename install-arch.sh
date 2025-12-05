@@ -415,6 +415,7 @@ show_all_disks_layout() {
     # Show layout of all disks in the system
     local output=""
     output+="Current Disk Layout:\n\n"
+    # Limit to 50 lines to prevent overwhelming TUI dialog with systems that have many partitions
     output+="$(lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT 2>/dev/null | head -50)\n\n"
     output+="This shows all available disks and their partitions.\n"
     output+="Select a disk to install Arch Linux."
@@ -519,12 +520,12 @@ select_disk() {
     INSTALL_DISK=$(echo "$disk_line" | awk '{print $1}')
     
     # Show detailed layout of the selected disk
-    local disk_layout
-    disk_layout=$(get_disk_layout "$INSTALL_DISK")
-    local detail_msg="Selected Disk Layout:\n\n${disk_layout}\n\n"
-    detail_msg+="Disk: ${INSTALL_DISK}\n\n"
-    detail_msg+="⚠️  Current partitions and data shown above will be ERASED!"
-    wt_msgbox "Selected Disk Details" "$detail_msg" 20 80 || true
+    local selected_disk_layout
+    selected_disk_layout=$(get_disk_layout "$INSTALL_DISK")
+    local detail_message="Selected Disk Layout:\n\n${selected_disk_layout}\n\n"
+    detail_message+="Disk: ${INSTALL_DISK}\n\n"
+    detail_message+="⚠️  Current partitions and data shown above will be ERASED!"
+    wt_msgbox "Selected Disk Details" "$detail_message" 20 80 || true
     
     # Confirm disk selection
     local confirm_msg="You have selected:\n\n${INSTALL_DISK}\n\n"
