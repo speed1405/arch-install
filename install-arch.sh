@@ -1596,10 +1596,10 @@ get_bundle_packages() {
             packages=(openssh fail2ban ufw nftables cockpit cockpit-pcp cockpit-machines prometheus-node-exporter grafana-agent logrotate smartmontools hdparm lm_sensors)
             ;;
         cloud)
-            packages=(kubectl helm terraform docker docker-compose python-pip)
+            packages=(ansible terraform packer kubectl helm k9s kind minikube aws-cli-v2 azure-cli google-cloud-cli podman podman-compose skopeo buildah direnv age sops jq yq)
             ;;
         creative)
-            packages=(gimp inkscape blender kdenlive audacity obs-studio krita darktable rawtherapee)
+            packages=(gimp krita inkscape blender darktable rawtherapee digikam kdenlive shotcut obs-studio ardour audacity calf lsp-plugins pipewire pipewire-alsa pipewire-pulse pipewire-jack helvum qpwgraph)
             ;;
         optimization)
             packages=(zram-generator irqbalance tlp tlp-rdw)
@@ -1608,10 +1608,10 @@ get_bundle_packages() {
             packages=(ufw clamav freshclam rkhunter apparmor firejail veracrypt keepassxc arch-audit usbguard)
             ;;
         networking)
-            packages=(wireshark-qt nmap mtr iftop nethogs ethtool tcpdump bind-tools dnsutils traceroute whois)
+            packages=(wireshark-qt wireshark-cli nmap tcpdump gnu-netcat mtr traceroute iftop nethogs bandwhich ethtool bind-tools inetutils net-tools iproute2 iperf3 speedtest-cli networkmanager networkmanager-openvpn network-manager-applet nm-connection-editor wireless_tools wpa_supplicant iwd bluez bluez-utils)
             ;;
         sysadmin)
-            packages=(htop btop ncdu iotop duf rsync rclone borg python-borgmatic smartmontools lm_sensors stress lshw dmidecode)
+            packages=(htop btop glances iotop sysstat dstat lsof strace ncdu dust duf gdu smartmontools hdparm testdisk ddrescue lvm2 cryptsetup rsync rclone tree tmux screen mc ranger fzf ripgrep fd bat exa timeshift rsnapshot restic borg etckeeper pacman-contrib reflector pkgfile downgrade stress s-tui cpupower)
             ;;
         *)
             packages=()
@@ -1928,10 +1928,33 @@ EOF
                 arch-chroot /mnt ufw --force enable >/dev/null 2>&1 || true
                 ;;
             networking)
-                # No post-configuration needed for networking bundle
+                # Enable network services
+                arch-chroot /mnt systemctl enable NetworkManager.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable bluetooth.service >/dev/null 2>&1 || true
+                
+                # Configure wireshark group
+                arch-chroot /mnt groupadd -f wireshark >/dev/null 2>&1 || true
                 ;;
             sysadmin)
-                # No post-configuration needed for sysadmin bundle
+                # Enable sysadmin services
+                arch-chroot /mnt systemctl enable smartd.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable sysstat.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable reflector.timer >/dev/null 2>&1 || true
+                
+                # Initialize etckeeper
+                arch-chroot /mnt bash -c 'if [[ ! -d /etc/.git ]]; then etckeeper init && etckeeper commit "Initial commit after installation"; fi' >/dev/null 2>&1 || true
+                
+                # Update pkgfile database
+                arch-chroot /mnt pkgfile --update >/dev/null 2>&1 || true
+                
+                # Create reflector config
+                arch-chroot /mnt mkdir -p /etc/xdg/reflector
+                cat > /mnt/etc/xdg/reflector/reflector.conf <<'EOF'
+--save /etc/pacman.d/mirrorlist
+--protocol https
+--latest 10
+--sort rate
+EOF
                 ;;
         esac
     done
