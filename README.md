@@ -54,10 +54,14 @@ The installer uses a gum-based TUI to provide a friendly, text-based installatio
 10. **User Accounts** - Set up root and primary user with secure password prompts
 11. **Mirror Selection** - Choose package mirror region for faster downloads (Worldwide, US, Europe, Asia, etc.)
 12. **Desktop Environment** - Choose from 10 desktop options or minimal install
-13. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative)
-14. **Installation Summary** - Review all settings before proceeding
-15. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
-16. **Completion** - Success message with next steps
+13. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative, utilities, optimization, security, networking, sysadmin)
+14. **AUR Helper** - Choose AUR helper (yay, paru, or none) for accessing community packages
+15. **Installation Summary** - Review all settings before proceeding
+16. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
+    - All selected packages (base, desktop, bundles) installed together in one efficient operation
+    - Post-installation configuration for services and settings
+    - AUR helper installation (if selected)
+17. **Completion** - Success message with next steps
 
 All user interaction happens through gum TUI menus with progress indicators, making the installation process intuitive and providing clear feedback on progress.
 
@@ -164,7 +168,7 @@ The `install-desktop.sh` script can also be run post-installation to add a deskt
 
 ## Software Bundles
 
-Optional post-install bundles available:
+Software bundles are collections of related packages that can be selected during installation. **All selected packages are installed together with the base system** for efficiency.
 
 ### Core Bundles
 - **dev.sh** - Developer tools (compilers, Docker, Podman, Git, language runtimes)
@@ -175,13 +179,21 @@ Optional post-install bundles available:
 - **desktop-utilities.sh** - Desktop utilities (browsers, office suite, media players)
 
 ### Additional Bundles
-- **aur-helper.sh** - AUR helper installation (yay or paru) for accessing Arch User Repository
 - **optimization.sh** - System optimization (pacman config, zram, SSD TRIM, performance tuning)
 - **security.sh** - Security hardening (firewall, ClamAV, AppArmor, kernel hardening, SSH hardening)
 - **networking.sh** - Network tools (Wireshark, nmap, mtr, iftop, NetworkManager)
 - **sysadmin.sh** - System administration (monitoring, backup tools, disk utilities, maintenance scripts)
 
-Bundles can be selected via gum TUI checklist during installation or run manually afterward. See **FEATURE-SUGGESTIONS.md** for even more enhancement ideas.
+### AUR Helper
+
+The AUR (Arch User Repository) helper is selected separately from bundles:
+- **yay** - Popular, user-friendly AUR helper (recommended for beginners)
+- **paru** - Feature-rich, modern AUR helper
+- **none** - Skip AUR helper installation (can be installed later)
+
+AUR helpers are installed after the base system and configured for the primary user account.
+
+Bundles can be selected via gum TUI checklist during installation. See **FEATURE-SUGGESTIONS.md** for even more enhancement ideas.
 
 ## Safety Notes
 

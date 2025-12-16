@@ -36,6 +36,7 @@ INSTALL_BOOT_MODE="auto"
 INSTALL_BOOTLOADER="auto"
 INSTALL_DESKTOP_CHOICE="none"
 INSTALL_BUNDLE_CHOICES=()
+INSTALL_AUR_HELPER="none"
 INSTALL_MIRROR_REGION="Worldwide"
 BTRFS_MOUNT_OPTS="compress=zstd,autodefrag"
 BTRFS_SUBVOLUMES="@:/ @home:/home @var_log:/var/log @var_cache:/var/cache @snapshots:/.snapshots"
@@ -1009,23 +1010,15 @@ select_bundles() {
         bundle_info+="💡 RECOMMENDATIONS FOR BEGINNERS:\n\n"
         bundle_info+="• Desktop Utilities - Web browser, office, etc.\n"
         bundle_info+="  (Recommended for most desktop users)\n\n"
-        bundle_info+="• AUR Helper - Access to community packages\n"
-        bundle_info+="  (Useful for most users)\n\n"
         bundle_info+="• Optimization - Better performance\n"
         bundle_info+="  (Recommended for all users)\n\n"
-        bundle_info+="You can always install more software later!"
+        bundle_info+="You can always install more software later!\n\n"
+        bundle_info+="Note: AUR helper will be selected in the next step."
         wt_msgbox "Software Bundles" "$bundle_info" 22 70 || true
     fi
     
     # Check for available bundle scripts
     # Core/Essential bundles first
-    if [[ -f "${bundle_dir}/aur-helper.sh" ]]; then
-        if [[ "$BEGINNER_MODE" == "true" ]]; then
-            bundles+=("aur-helper" "AUR helper - Access community packages ⭐ RECOMMENDED" OFF)
-        else
-            bundles+=("aur-helper" "AUR helper (yay/paru for AUR access)" OFF)
-        fi
-    fi
     if [[ -f "${bundle_dir}/optimization.sh" ]]; then
         if [[ "$BEGINNER_MODE" == "true" ]]; then
             bundles+=("optimization" "System optimization ⭐ RECOMMENDED" OFF)
@@ -1129,6 +1122,36 @@ select_mirror_region() {
     esac
 }
 
+select_aur_helper() {
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        local aur_info="AUR Helper Selection\n\n"
+        aur_info+="The AUR (Arch User Repository) contains community packages\n"
+        aur_info+="not in the official repositories.\n\n"
+        aur_info+="An AUR helper makes it easy to install these packages.\n\n"
+        aur_info+="💡 OPTIONS:\n\n"
+        aur_info+="• yay - Popular, user-friendly ⭐ RECOMMENDED\n"
+        aur_info+="• paru - Feature-rich, modern alternative\n"
+        aur_info+="• None - Skip (install manually later if needed)\n\n"
+        aur_info+="Note: AUR helpers are installed after the base system."
+        wt_msgbox "AUR Helper Information" "$aur_info" 20 70 || true
+    fi
+    
+    local aur_choice
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        aur_choice=$(wt_menu "AUR Helper" "Select an AUR helper to install:" 14 75 4 \
+            "yay" "yay - User-friendly AUR helper ⭐ RECOMMENDED" \
+            "paru" "paru - Feature-rich AUR helper" \
+            "none" "None - Skip AUR helper installation")
+    else
+        aur_choice=$(wt_menu "AUR Helper" "Select an AUR helper to install:" 14 70 4 \
+            "none" "None - Skip AUR helper installation" \
+            "yay" "yay - Yet Another Yogurt (popular)" \
+            "paru" "paru - Feature-rich AUR helper")
+    fi
+    
+    INSTALL_AUR_HELPER="${aur_choice:-none}"
+}
+
 show_installation_summary() {
     local summary=""
     
@@ -1183,10 +1206,11 @@ show_installation_summary() {
     summary+="Mirror Region: ${INSTALL_MIRROR_REGION}\n"
     summary+="Desktop: ${INSTALL_DESKTOP_CHOICE}\n"
     if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
-        summary+="Bundles: ${INSTALL_BUNDLE_CHOICES[*]}\n\n"
+        summary+="Bundles: ${INSTALL_BUNDLE_CHOICES[*]}\n"
     else
-        summary+="Bundles: none\n\n"
+        summary+="Bundles: none\n"
     fi
+    summary+="AUR Helper: ${INSTALL_AUR_HELPER}\n\n"
     
     if [[ "$BEGINNER_MODE" == "true" ]]; then
         summary+="⏱️ Estimated time: 15-30 minutes\n"
@@ -1512,8 +1536,93 @@ update_mirrorlist() {
     fi
 }
 
+get_desktop_packages() {
+    # Returns package list for selected desktop environment
+    local desktop="${1,,}"
+    local packages=()
+    
+    case "$desktop" in
+        gnome)
+            packages=(gnome gnome-shell-extensions gdm gnome-console gnome-tweaks)
+            ;;
+        kde|plasma)
+            packages=(plasma-desktop konsole dolphin sddm)
+            ;;
+        xfce)
+            packages=(xfce4 xfce4-goodies lightdm lightdm-gtk-greeter)
+            ;;
+        cinnamon)
+            packages=(cinnamon nemo gnome-terminal lightdm lightdm-slick-greeter)
+            ;;
+        mate)
+            packages=(mate mate-extra lightdm lightdm-gtk-greeter)
+            ;;
+        budgie)
+            packages=(budgie-desktop budgie-desktop-view gnome-terminal gdm)
+            ;;
+        lxqt)
+            packages=(lxqt breeze-icons sddm)
+            ;;
+        sway)
+            packages=(sway swayidle swaylock waybar foot grim slurp greetd tuigreet)
+            ;;
+        i3)
+            packages=(i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter)
+            ;;
+        none|*)
+            packages=()
+            ;;
+    esac
+    
+    echo "${packages[@]}"
+}
+
+get_bundle_packages() {
+    # Returns package list for a specific bundle
+    local bundle="$1"
+    local packages=()
+    
+    case "$bundle" in
+        desktop-utilities)
+            packages=(firefox chromium thunderbird vlc mpv celluloid libreoffice-fresh hunspell-en_us gnome-keyring seahorse keepassxc flatpak gnome-software-packagekit-plugin cups cups-pdf system-config-printer sane airscan printer-support brlaser simplescan)
+            ;;
+        dev)
+            packages=(base-devel git github-cli clang gcc gdb lldb cmake ninja ccache go rustup nodejs npm yarn python python-pipx python-virtualenv docker docker-buildx docker-compose podman podman-docker buildah skopeo direnv just ripgrep fd neovim tmux starship)
+            ;;
+        gaming)
+            packages=(steam lutris wine-staging winetricks gamemode lib32-gamemode mangohud lib32-mangohud goverlay vkbasalt lib32-vkbasalt pipewire wireplumber pipewire-alsa pipewire-pulse pipewire-jack)
+            ;;
+        server)
+            packages=(openssh fail2ban ufw nftables cockpit cockpit-pcp cockpit-machines prometheus-node-exporter grafana-agent logrotate smartmontools hdparm lm_sensors)
+            ;;
+        cloud)
+            packages=(ansible terraform packer kubectl helm k9s kind minikube aws-cli-v2 azure-cli google-cloud-cli podman podman-compose skopeo buildah direnv age sops jq yq)
+            ;;
+        creative)
+            packages=(gimp krita inkscape blender darktable rawtherapee digikam kdenlive shotcut obs-studio ardour audacity calf lsp-plugins pipewire pipewire-alsa pipewire-pulse pipewire-jack helvum qpwgraph)
+            ;;
+        optimization)
+            packages=(zram-generator irqbalance tlp tlp-rdw)
+            ;;
+        security)
+            packages=(ufw clamav freshclam rkhunter apparmor firejail veracrypt keepassxc arch-audit usbguard)
+            ;;
+        networking)
+            packages=(wireshark-qt wireshark-cli nmap tcpdump gnu-netcat mtr traceroute iftop nethogs bandwhich ethtool bind-tools inetutils net-tools iproute2 iperf3 speedtest-cli networkmanager networkmanager-openvpn network-manager-applet nm-connection-editor wireless_tools wpa_supplicant iwd bluez bluez-utils)
+            ;;
+        sysadmin)
+            packages=(htop btop glances iotop sysstat dstat lsof strace ncdu dust duf gdu smartmontools hdparm testdisk ddrescue lvm2 cryptsetup rsync rclone tree tmux screen mc ranger fzf ripgrep fd bat exa timeshift rsnapshot restic borg etckeeper pacman-contrib reflector pkgfile downgrade stress s-tui cpupower)
+            ;;
+        *)
+            packages=()
+            ;;
+    esac
+    
+    echo "${packages[@]}"
+}
+
 install_base_system() {
-    log_step "Installing base system"
+    log_step "Installing base system and user selections"
     
     local packages=(base linux linux-firmware networkmanager)
     
@@ -1530,7 +1639,33 @@ install_base_system() {
     
     packages+=(nano vim git sudo)
     
+    # Add desktop environment packages if selected
+    if [[ $INSTALL_DESKTOP_CHOICE != "none" ]]; then
+        local desktop_pkgs
+        desktop_pkgs=$(get_desktop_packages "$INSTALL_DESKTOP_CHOICE")
+        if [[ -n $desktop_pkgs ]]; then
+            log_info "Including ${INSTALL_DESKTOP_CHOICE} desktop packages"
+            read -ra desktop_array <<< "$desktop_pkgs"
+            packages+=("${desktop_array[@]}")
+        fi
+    fi
+    
+    # Add bundle packages if selected
+    if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
+        log_info "Including ${#INSTALL_BUNDLE_CHOICES[@]} bundle package(s)"
+        for bundle in "${INSTALL_BUNDLE_CHOICES[@]}"; do
+            local bundle_pkgs
+            bundle_pkgs=$(get_bundle_packages "$bundle")
+            if [[ -n $bundle_pkgs ]]; then
+                log_info "Including $bundle packages"
+                read -ra bundle_array <<< "$bundle_pkgs"
+                packages+=("${bundle_array[@]}")
+            fi
+        done
+    fi
+    
     # Show pacstrap output for visibility
+    log_info "Installing ${#packages[@]} packages..."
     pacstrap -K /mnt "${packages[@]}"
 }
 
@@ -1674,47 +1809,177 @@ EOF
     fi
 }
 
-install_desktop() {
+configure_desktop() {
     [[ $INSTALL_DESKTOP_CHOICE == "none" ]] && return
     
-    local desktop_script="${SCRIPT_DIR}/install-desktop.sh"
-    [[ -f $desktop_script ]] || return
+    log_step "Configuring desktop environment: ${INSTALL_DESKTOP_CHOICE}"
     
-    log_step "Installing desktop environment: ${INSTALL_DESKTOP_CHOICE}"
+    # Determine display manager based on desktop choice
+    local display_manager=""
+    case "${INSTALL_DESKTOP_CHOICE,,}" in
+        gnome|budgie)
+            display_manager="gdm"
+            ;;
+        kde|plasma|lxqt)
+            display_manager="sddm"
+            ;;
+        xfce|cinnamon|mate|i3)
+            display_manager="lightdm"
+            ;;
+        sway)
+            display_manager="greetd"
+            # Configure greetd for sway
+            arch-chroot /mnt mkdir -p /etc/greetd
+            if [[ ! -s /mnt/etc/greetd/config.toml ]]; then
+                cat <<'EOF' > /mnt/etc/greetd/config.toml
+[terminal]
+shell = "/usr/bin/tuigreet"
+args = ["--cmd", "sway"]
+EOF
+            fi
+            ;;
+    esac
     
-    local target_path="/root/install-desktop.sh"
-    cp "$desktop_script" "/mnt${target_path}"
-    chmod +x "/mnt${target_path}"
-    
-    # Show output so users can see desktop installation progress
-    arch-chroot /mnt env "DESKTOP_ENV=${INSTALL_DESKTOP_CHOICE}" "$target_path"
+    # Enable display manager
+    if [[ -n $display_manager ]]; then
+        log_info "Enabling ${display_manager} display manager"
+        arch-chroot /mnt systemctl enable "$display_manager" >/dev/null 2>&1
+    fi
 }
 
-run_bundles() {
+configure_bundles() {
     [[ ${#INSTALL_BUNDLE_CHOICES[@]} -eq 0 ]] && return
     
-    log_step "Installing ${#INSTALL_BUNDLE_CHOICES[@]} software bundle(s)"
+    log_step "Configuring ${#INSTALL_BUNDLE_CHOICES[@]} software bundle(s)"
     
     for bundle in "${INSTALL_BUNDLE_CHOICES[@]}"; do
-        local bundle_script="${SCRIPT_DIR}/${bundle}.sh"
+        log_info "Configuring bundle: ${bundle}"
         
-        if [[ ! -f $bundle_script ]]; then
-            log_error "Bundle script not found: ${bundle_script}"
-            continue
-        fi
-        
-        log_step "Running bundle: ${bundle}"
-        
-        local target_path="/root/bundle-${bundle}.sh"
-        cp "$bundle_script" "/mnt${target_path}"
-        chmod +x "/mnt${target_path}"
-        
-        # Show output so users can see bundle installation progress
-        arch-chroot /mnt "$target_path"
-        
-        # Clean up the copied script
-        rm -f "/mnt${target_path}"
+        case "$bundle" in
+            desktop-utilities)
+                # Enable desktop services
+                arch-chroot /mnt systemctl enable cups.socket >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable avahi-daemon.service >/dev/null 2>&1 || true
+                ;;
+            dev)
+                # Enable container services
+                arch-chroot /mnt systemctl enable docker.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable podman.socket >/dev/null 2>&1 || true
+                log_info "Add user to docker group: usermod -aG docker ${INSTALL_USER}"
+                ;;
+            gaming)
+                # Enable gaming services
+                arch-chroot /mnt systemctl enable gamemoded.service >/dev/null 2>&1 || true
+                ;;
+            server)
+                # Enable server services
+                arch-chroot /mnt systemctl enable sshd.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable fail2ban.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable ufw.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable cockpit.socket >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable prometheus-node-exporter.service >/dev/null 2>&1 || true
+                ;;
+            cloud)
+                # No post-configuration needed for cloud bundle
+                ;;
+            creative)
+                # No post-configuration needed for creative bundle
+                ;;
+            optimization)
+                # Configure optimization settings
+                # Pacman config
+                arch-chroot /mnt sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 5/' /etc/pacman.conf || true
+                arch-chroot /mnt sed -i 's/^#Color/Color/' /etc/pacman.conf || true
+                arch-chroot /mnt sed -i 's/^#VerbosePkgLists/VerbosePkgLists/' /etc/pacman.conf || true
+                
+                # Swappiness
+                arch-chroot /mnt bash -c 'mkdir -p /etc/sysctl.d && echo "vm.swappiness=10" > /etc/sysctl.d/99-swappiness.conf'
+                
+                # zram configuration
+                cat > /mnt/etc/systemd/zram-generator.conf <<'EOF'
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+swap-priority = 100
+fs-type = swap
+EOF
+                
+                # Enable services
+                arch-chroot /mnt systemctl enable fstrim.timer >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable irqbalance.service >/dev/null 2>&1 || true
+                
+                # Check for battery and enable TLP if needed
+                if [[ -d /sys/class/power_supply/BAT* ]] || [[ -d /sys/class/power_supply/battery ]]; then
+                    arch-chroot /mnt systemctl enable tlp.service >/dev/null 2>&1 || true
+                    arch-chroot /mnt systemctl mask systemd-rfkill.service systemd-rfkill.socket >/dev/null 2>&1 || true
+                fi
+                ;;
+            security)
+                # Enable security services
+                arch-chroot /mnt systemctl enable ufw.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable clamav-freshclam.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable apparmor.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable usbguard.service >/dev/null 2>&1 || true
+                
+                # Basic firewall config
+                arch-chroot /mnt ufw default deny incoming >/dev/null 2>&1 || true
+                arch-chroot /mnt ufw default allow outgoing >/dev/null 2>&1 || true
+                arch-chroot /mnt ufw limit ssh >/dev/null 2>&1 || true
+                arch-chroot /mnt ufw --force enable >/dev/null 2>&1 || true
+                ;;
+            networking)
+                # Enable network services
+                arch-chroot /mnt systemctl enable NetworkManager.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable bluetooth.service >/dev/null 2>&1 || true
+                
+                # Configure wireshark group
+                arch-chroot /mnt groupadd -f wireshark >/dev/null 2>&1 || true
+                ;;
+            sysadmin)
+                # Enable sysadmin services
+                arch-chroot /mnt systemctl enable smartd.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable sysstat.service >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable reflector.timer >/dev/null 2>&1 || true
+                
+                # Initialize etckeeper
+                arch-chroot /mnt bash -c 'if [[ ! -d /etc/.git ]]; then etckeeper init && etckeeper commit "Initial commit after installation"; fi' >/dev/null 2>&1 || true
+                
+                # Update pkgfile database
+                arch-chroot /mnt pkgfile --update >/dev/null 2>&1 || true
+                
+                # Create reflector config
+                arch-chroot /mnt mkdir -p /etc/xdg/reflector
+                cat > /mnt/etc/xdg/reflector/reflector.conf <<'EOF'
+--save /etc/pacman.d/mirrorlist
+--protocol https
+--latest 10
+--sort rate
+EOF
+                ;;
+        esac
     done
+}
+
+install_aur_helper() {
+    [[ $INSTALL_AUR_HELPER == "none" ]] && return
+    
+    local aur_script="${SCRIPT_DIR}/aur-helper.sh"
+    [[ -f $aur_script ]] || {
+        log_error "AUR helper script not found: ${aur_script}"
+        return
+    }
+    
+    log_step "Installing AUR helper: ${INSTALL_AUR_HELPER}"
+    
+    local target_path="/root/aur-helper-install.sh"
+    cp "$aur_script" "/mnt${target_path}"
+    chmod +x "/mnt${target_path}"
+    
+    # Run AUR helper installation with selected helper
+    arch-chroot /mnt env "AUR_HELPER=${INSTALL_AUR_HELPER}" "INSTALL_USER=${INSTALL_USER}" "$target_path"
+    
+    # Clean up the copied script
+    rm -f "/mnt${target_path}"
 }
 
 perform_cleanup() {
@@ -1792,6 +2057,7 @@ main() {
     select_mirror_region
     select_desktop
     select_bundles
+    select_aur_helper
     
     # Finalize boot configuration
     BOOT_MODE=$(resolve_boot_mode "$DETECTED_BOOT_MODE")
@@ -1867,30 +2133,30 @@ main() {
         update_mirrorlist
         
         echo "35" ; echo "XXX"
-        echo "Installing base system..."
-        echo "This will take several minutes - downloading and installing packages"
+        echo "Installing base system and selected packages..."
+        echo "This will take several minutes - installing system, desktop, and bundles"
         echo "XXX"
         install_base_system 2>&1 >/dev/null || true
         
-        echo "60" ; echo "XXX"
+        echo "75" ; echo "XXX"
         echo "Generating fstab..."
         echo "Creating filesystem table configuration"
         echo "XXX"
         generate_fstab
         
-        echo "65" ; echo "XXX"
+        echo "77" ; echo "XXX"
         echo "Configuring system..."
         echo "Setting up timezone, locale, hostname, and users"
         echo "XXX"
         configure_system
         
-        echo "75" ; echo "XXX"
+        echo "79" ; echo "XXX"
         echo "Creating swapfile..."
         echo "Setting up swap space for memory management"
         echo "XXX"
         setup_swapfile
         
-        echo "80" ; echo "XXX"
+        echo "81" ; echo "XXX"
         echo "Installing bootloader..."
         echo "Configuring ${SELECTED_BOOTLOADER} for ${BOOT_MODE^^} mode"
         echo "XXX"
@@ -1898,18 +2164,26 @@ main() {
         
         if [[ $INSTALL_DESKTOP_CHOICE != "none" ]]; then
             echo "85" ; echo "XXX"
-            echo "Installing desktop environment..."
-            echo "Setting up ${INSTALL_DESKTOP_CHOICE} desktop"
+            echo "Configuring desktop environment..."
+            echo "Enabling ${INSTALL_DESKTOP_CHOICE} desktop services"
             echo "XXX"
-            install_desktop 2>&1 >/dev/null || true
+            configure_desktop
         fi
         
         if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
-            echo "95" ; echo "XXX"
-            echo "Running post-install bundles..."
-            echo "Installing ${#INSTALL_BUNDLE_CHOICES[@]} additional software bundle(s)"
+            echo "90" ; echo "XXX"
+            echo "Configuring bundles..."
+            echo "Setting up ${#INSTALL_BUNDLE_CHOICES[@]} bundle service(s)"
             echo "XXX"
-            run_bundles 2>&1 >/dev/null || true
+            configure_bundles
+        fi
+        
+        if [[ $INSTALL_AUR_HELPER != "none" ]]; then
+            echo "95" ; echo "XXX"
+            echo "Installing AUR helper..."
+            echo "Setting up ${INSTALL_AUR_HELPER} for AUR package access"
+            echo "XXX"
+            install_aur_helper 2>&1 >/dev/null || true
         fi
         
         echo "100" ; echo "XXX"
