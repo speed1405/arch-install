@@ -41,6 +41,7 @@ INSTALL_MIRROR_REGION="Worldwide"
 BTRFS_MOUNT_OPTS="compress=zstd,autodefrag"
 BTRFS_SUBVOLUMES="@:/ @home:/home @var_log:/var/log @var_cache:/var/cache @snapshots:/.snapshots"
 BEGINNER_MODE=false
+INSTALL_LAPTOP_MODE=false
 
 # Runtime state
 MOUNTED=false
@@ -529,6 +530,83 @@ show_hardware_summary() {
         fi
         # If they don't want to exit, show the summary again
         wt_msgbox "Hardware Summary" "$message" 18 75 || true
+    fi
+}
+
+select_laptop_mode() {
+    # Detect if system has a battery
+    local has_battery=false
+    for battery_path in /sys/class/power_supply/BAT* /sys/class/power_supply/battery; do
+        if [[ -d "$battery_path" ]]; then
+            has_battery=true
+            break
+        fi
+    done
+    
+    local laptop_message=""
+    
+    if [[ "$has_battery" == true ]]; then
+        # Battery detected - recommend laptop mode
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            laptop_message="💻 Laptop Detected!\n\n"
+            laptop_message+="A battery was found on your system, which means this is likely a laptop.\n\n"
+            laptop_message+="🔋 LAPTOP OPTIMIZATIONS include:\n"
+            laptop_message+="• TLP - Advanced power management for better battery life\n"
+            laptop_message+="• CPU frequency scaling - Balances performance and battery\n"
+            laptop_message+="• Display brightness optimization\n"
+            laptop_message+="• USB power management\n"
+            laptop_message+="• Disk power management\n"
+            laptop_message+="• WiFi power saving\n\n"
+            laptop_message+="⭐ RECOMMENDATION: Enable laptop optimizations for better battery life.\n\n"
+            laptop_message+="Enable laptop optimizations?"
+        else
+            laptop_message="Battery detected on your system.\n\n"
+            laptop_message+="Enable laptop optimizations?\n\n"
+            laptop_message+="This will install and configure:\n"
+            laptop_message+="• TLP for power management\n"
+            laptop_message+="• Battery threshold settings\n"
+            laptop_message+="• Power-saving features\n\n"
+            laptop_message+="Recommended for laptops."
+        fi
+        
+        if wt_yesno "Laptop Optimizations" "$laptop_message" 22 75; then
+            INSTALL_LAPTOP_MODE=true
+            log_info "Laptop optimizations enabled"
+        else
+            INSTALL_LAPTOP_MODE=false
+            log_info "Laptop optimizations disabled"
+        fi
+    else
+        # No battery detected - ask if this is still a laptop
+        if [[ "$BEGINNER_MODE" == "true" ]]; then
+            laptop_message="💻 Is this a laptop?\n\n"
+            laptop_message+="No battery was detected, but you might still be using a laptop\n"
+            laptop_message+="(e.g., battery not connected, virtual machine, etc.).\n\n"
+            laptop_message+="🔋 LAPTOP OPTIMIZATIONS include:\n"
+            laptop_message+="• Better battery life and power management\n"
+            laptop_message+="• Automatic CPU frequency scaling\n"
+            laptop_message+="• Display and USB power saving\n"
+            laptop_message+="• WiFi power management\n\n"
+            laptop_message+="💡 TIP:\n"
+            laptop_message+="• Choose 'Yes' if installing on a laptop\n"
+            laptop_message+="• Choose 'No' for desktop computers\n\n"
+            laptop_message+="Is this a laptop?"
+        else
+            laptop_message="No battery detected.\n\n"
+            laptop_message+="Enable laptop optimizations anyway?\n\n"
+            laptop_message+="Select 'Yes' if:\n"
+            laptop_message+="• Installing on a laptop without connected battery\n"
+            laptop_message+="• Testing in a VM but targeting laptop deployment\n\n"
+            laptop_message+="Select 'No' for desktop systems."
+        fi
+        
+        if wt_yesno "Laptop Mode" "$laptop_message" 22 75; then
+            INSTALL_LAPTOP_MODE=true
+            log_info "Laptop optimizations enabled (manual selection)"
+        else
+            INSTALL_LAPTOP_MODE=false
+            log_info "Laptop optimizations disabled (desktop mode)"
+        fi
     fi
 }
 
@@ -1202,7 +1280,8 @@ show_installation_summary() {
     summary+="Timezone: ${INSTALL_TIMEZONE}\n"
     summary+="Locale: ${INSTALL_LOCALE}\n"
     summary+="Keymap: ${INSTALL_KEYMAP}\n"
-    summary+="User: ${INSTALL_USER}\n\n"
+    summary+="User: ${INSTALL_USER}\n"
+    summary+="Laptop Mode: $([[ "$INSTALL_LAPTOP_MODE" == "true" ]] && echo "Enabled" || echo "Disabled")\n\n"
     summary+="Mirror Region: ${INSTALL_MIRROR_REGION}\n"
     summary+="Desktop: ${INSTALL_DESKTOP_CHOICE}\n"
     if [[ ${#INSTALL_BUNDLE_CHOICES[@]} -gt 0 ]]; then
@@ -1908,8 +1987,9 @@ EOF
                 arch-chroot /mnt systemctl enable fstrim.timer >/dev/null 2>&1 || true
                 arch-chroot /mnt systemctl enable irqbalance.service >/dev/null 2>&1 || true
                 
-                # Check for battery and enable TLP if needed
-                if [[ -d /sys/class/power_supply/BAT* ]] || [[ -d /sys/class/power_supply/battery ]]; then
+                # Enable TLP if laptop mode is enabled
+                if [[ "$INSTALL_LAPTOP_MODE" == "true" ]]; then
+                    log_info "Enabling TLP for laptop power management"
                     arch-chroot /mnt systemctl enable tlp.service >/dev/null 2>&1 || true
                     arch-chroot /mnt systemctl mask systemd-rfkill.service systemd-rfkill.socket >/dev/null 2>&1 || true
                 fi
@@ -2047,6 +2127,7 @@ main() {
     show_welcome
     show_requirements_checklist
     show_hardware_summary
+    select_laptop_mode
     
     select_disk
     select_filesystem

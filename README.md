@@ -42,26 +42,27 @@ The installer uses a gum-based TUI to provide a friendly, text-based installatio
 2. **Mode Selection** - Choose between Beginner Mode (with extra guidance) or Advanced Mode
 3. **Pre-Installation Checklist** - (Beginner Mode) Ensure you're prepared for installation
 4. **Hardware Summary** - Displays detected boot mode, CPU, microcode, GPU, memory, and virtualization
-5. **Disk Selection** - Interactive menu to choose installation disk with confirmation
-6. **Filesystem Type** - Choose between ext4 (traditional) or Btrfs (modern with snapshots)
-7. **Partition Layout** - Select layout:
+5. **Laptop Optimization** - Choose whether to enable laptop-specific optimizations (TLP power management, battery optimization)
+6. **Disk Selection** - Interactive menu to choose installation disk with confirmation
+7. **Filesystem Type** - Choose between ext4 (traditional) or Btrfs (modern with snapshots)
+8. **Partition Layout** - Select layout:
    - Single partition (simple) ⭐ Recommended for beginners
    - LVM (flexible volume management)
    - LVM with separate /home
    - Btrfs subvolumes (@, @home, @var_log, etc.)
-8. **Disk Encryption** - Optional LUKS encryption with detailed explanation and secure passphrase entry
-9. **System Settings** - Configure hostname, timezone, locale, and keyboard layout via menus
-10. **User Accounts** - Set up root and primary user with secure password prompts
-11. **Mirror Selection** - Choose package mirror region for faster downloads (Worldwide, US, Europe, Asia, etc.)
-12. **Desktop Environment** - Choose from 10 desktop options or minimal install
-13. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative, utilities, optimization, security, networking, sysadmin)
-14. **AUR Helper** - Choose AUR helper (yay, paru, or none) for accessing community packages
-15. **Installation Summary** - Review all settings before proceeding
-16. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
+9. **Disk Encryption** - Optional LUKS encryption with detailed explanation and secure passphrase entry
+10. **System Settings** - Configure hostname, timezone, locale, and keyboard layout via menus
+11. **User Accounts** - Set up root and primary user with secure password prompts
+12. **Mirror Selection** - Choose package mirror region for faster downloads (Worldwide, US, Europe, Asia, etc.)
+13. **Desktop Environment** - Choose from 10 desktop options or minimal install
+14. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative, utilities, optimization, security, networking, sysadmin)
+15. **AUR Helper** - Choose AUR helper (yay, paru, or none) for accessing community packages
+16. **Installation Summary** - Review all settings before proceeding
+17. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
     - All selected packages (base, desktop, bundles) installed together in one efficient operation
     - Post-installation configuration for services and settings
     - AUR helper installation (if selected)
-17. **Completion** - Success message with next steps
+18. **Completion** - Success message with next steps
 
 All user interaction happens through gum TUI menus with progress indicators, making the installation process intuitive and providing clear feedback on progress.
 
@@ -183,6 +184,33 @@ Software bundles are collections of related packages that can be selected during
 - **security.sh** - Security hardening (firewall, ClamAV, AppArmor, kernel hardening, SSH hardening)
 - **networking.sh** - Network tools (Wireshark, nmap, mtr, iftop, NetworkManager)
 - **sysadmin.sh** - System administration (monitoring, backup tools, disk utilities, maintenance scripts)
+
+### Laptop Optimizations
+
+The installer includes dedicated laptop optimization support:
+
+- **Auto-detection** - The installer detects laptop hardware (battery presence) and prompts appropriately
+- **Manual selection** - You can enable laptop optimizations even if no battery is detected
+- **TLP power management** - When enabled with the optimization bundle, installs TLP for:
+  - Extended battery life
+  - CPU frequency scaling
+  - Display brightness optimization
+  - USB and disk power management
+  - WiFi power saving
+  - Thermal management
+
+**How it works:**
+1. After hardware summary, the installer prompts for laptop mode
+2. If a battery is detected, laptop mode is recommended
+3. If no battery is detected, you can still enable it manually
+4. When the optimization bundle is selected, TLP is installed/configured based on laptop mode
+5. Laptop mode choice is shown in the installation summary
+
+This feature is especially useful for:
+- Laptop installations (obvious!)
+- Testing in VMs targeting laptop deployment
+- Systems with removable batteries
+- Dual-boot setups where battery detection may vary
 
 ### AUR Helper
 
