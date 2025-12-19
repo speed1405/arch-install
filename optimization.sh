@@ -111,23 +111,38 @@ systemctl restart systemd-journald
 log_info "Journal size limited to 500MB"
 
 # Install power management tools for laptops
-has_battery=false
-for battery_path in /sys/class/power_supply/BAT* /sys/class/power_supply/battery; do
-  if [[ -d "$battery_path" ]]; then
-    has_battery=true
-    break
-  fi
-done
-
-if [[ "$has_battery" == true ]]; then
-  log_step "Laptop battery detected, installing TLP"
+# Check for INSTALL_LAPTOP_MODE environment variable first, then auto-detect
+if [[ "${INSTALL_LAPTOP_MODE:-}" == "true" ]]; then
+  # Explicitly enabled via environment variable
+  log_step "Laptop mode enabled, installing TLP"
   install_pkgs tlp tlp-rdw
   systemctl enable tlp.service
   systemctl mask systemd-rfkill.service systemd-rfkill.socket
   log_info "TLP power management enabled"
   log_info "Configure /etc/tlp.conf for advanced settings"
+elif [[ "${INSTALL_LAPTOP_MODE:-}" == "false" ]]; then
+  # Explicitly disabled via environment variable
+  log_info "Laptop mode disabled, skipping laptop power tools"
 else
-  log_info "No battery detected, skipping laptop power tools"
+  # Auto-detect based on battery presence
+  has_battery=false
+  for battery_path in /sys/class/power_supply/BAT* /sys/class/power_supply/battery; do
+    if [[ -d "$battery_path" ]]; then
+      has_battery=true
+      break
+    fi
+  done
+  
+  if [[ "$has_battery" == true ]]; then
+    log_step "Laptop battery detected, installing TLP"
+    install_pkgs tlp tlp-rdw
+    systemctl enable tlp.service
+    systemctl mask systemd-rfkill.service systemd-rfkill.socket
+    log_info "TLP power management enabled"
+    log_info "Configure /etc/tlp.conf for advanced settings"
+  else
+    log_info "No battery detected, skipping laptop power tools"
+  fi
 fi
 
 # Enable microcode updates
