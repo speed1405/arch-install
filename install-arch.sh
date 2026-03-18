@@ -43,6 +43,17 @@ BTRFS_SUBVOLUMES="@:/ @home:/home @var_log:/var/log @var_cache:/var/cache @snaps
 BEGINNER_MODE=false
 INSTALL_LAPTOP_MODE=false
 
+# Performance tuning configuration
+INSTALL_CPU_GOVERNOR="schedutil"
+INSTALL_IO_SCHEDULER="mq-deadline"
+INSTALL_SWAPPINESS=10
+INSTALL_ZRAM=true
+INSTALL_IRQBALANCE=true
+INSTALL_THERMALD=false
+
+# Backup solution configuration
+INSTALL_BACKUP_SOLUTION="none"
+
 # Runtime state
 MOUNTED=false
 BOOT_MODE=""
@@ -1230,6 +1241,127 @@ select_aur_helper() {
     INSTALL_AUR_HELPER="${aur_choice:-none}"
 }
 
+select_performance_tuning() {
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        local perf_info="Performance Tuning\n\n"
+        perf_info+="These settings optimize how your system uses hardware resources.\n"
+        perf_info+="The defaults work well for most users - feel free to keep them!\n\n"
+        perf_info+="• CPU Governor - Controls how the CPU adjusts speed\n"
+        perf_info+="• I/O Scheduler - Controls how disk reads/writes are queued\n"
+        perf_info+="• Swappiness - How eagerly the kernel moves RAM contents to disk\n"
+        perf_info+="• Zram - Compressed swap space in RAM (saves disk writes)\n\n"
+        perf_info+="💡 TIP: The recommended defaults are suitable for most systems."
+        wt_msgbox "Performance Tuning" "$perf_info" 18 72 || true
+    fi
+
+    # CPU Governor selection
+    local governor_choice
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        governor_choice=$(wt_menu "CPU Governor" "Select CPU frequency scaling governor:" 16 78 4 \
+            "schedutil" "schedutil - Smart, responsive scaling ⭐ RECOMMENDED" \
+            "performance" "performance - Maximum speed (uses more power)" \
+            "powersave" "powersave - Always low frequency (battery saving)" \
+            "skip" "skip - Keep kernel default (no change)")
+    else
+        governor_choice=$(wt_menu "CPU Governor" "Select CPU frequency scaling governor:" 16 75 4 \
+            "schedutil" "schedutil - scheduler-driven, efficient ⭐ RECOMMENDED" \
+            "performance" "performance - Always max frequency" \
+            "powersave" "powersave - Always min frequency" \
+            "skip" "skip - Don't configure governor")
+    fi
+    INSTALL_CPU_GOVERNOR="${governor_choice:-schedutil}"
+
+    # I/O Scheduler selection
+    local io_choice
+    io_choice=$(wt_menu "I/O Scheduler" "Select disk I/O scheduler (applied via udev):" 16 75 4 \
+        "mq-deadline" "mq-deadline - Best for SSDs and NVMe ⭐ RECOMMENDED" \
+        "bfq" "bfq - Budget Fair Queueing, better for HDDs/desktops" \
+        "kyber" "kyber - Low latency for very fast NVMe storage" \
+        "skip" "skip - Keep kernel default")
+    INSTALL_IO_SCHEDULER="${io_choice:-mq-deadline}"
+
+    # Swappiness selection
+    local swap_choice
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        swap_choice=$(wt_menu "Swappiness" "How eagerly should the kernel swap RAM to disk? (lower = prefer RAM):" 18 75 5 \
+            "10" "10 - Prefer RAM, swap only when necessary ⭐ RECOMMENDED" \
+            "0" "0 - Avoid swap entirely (ideal for 16 GB+ RAM)" \
+            "30" "30 - Moderate swap usage" \
+            "60" "60 - Kernel default" \
+            "100" "100 - Aggressive swap (low RAM systems)")
+    else
+        swap_choice=$(wt_menu "Swappiness" "Select vm.swappiness value (0=avoid swap, 100=aggressive swap):" 18 75 5 \
+            "10" "10 - Low swappiness, prefer RAM ⭐ RECOMMENDED" \
+            "0" "0 - Never swap (requires sufficient RAM)" \
+            "30" "30 - Moderate swappiness" \
+            "60" "60 - Kernel default (balanced)" \
+            "100" "100 - High swappiness")
+    fi
+    INSTALL_SWAPPINESS="${swap_choice:-10}"
+
+    # Additional optimizations checklist
+    local extra_selected
+    extra_selected=$(wt_checklist "Additional Optimizations" "Select additional performance features:" 14 75 3 \
+        "zram" "zram - Compressed swap in RAM (reduces disk I/O)" ON \
+        "irqbalance" "irqbalance - Distribute hardware interrupts across CPU cores" ON \
+        "thermald" "thermald - Intel CPU thermal management daemon (Intel only)" OFF \
+        || echo "")
+
+    # Parse checklist output (process substitution keeps vars in current shell)
+    INSTALL_ZRAM=false
+    INSTALL_IRQBALANCE=false
+    INSTALL_THERMALD=false
+    if [[ -n "$extra_selected" ]]; then
+        while IFS= read -r item; do
+            [[ -n "$item" ]] || continue
+            case "$item" in
+                zram)       INSTALL_ZRAM=true ;;
+                irqbalance) INSTALL_IRQBALANCE=true ;;
+                thermald)   INSTALL_THERMALD=true ;;
+            esac
+        done < <(echo "$extra_selected" | tr -d '"' | tr ' ' '\n')
+    fi
+}
+
+select_backup_solution() {
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        local backup_info="Backup Solution\n\n"
+        backup_info+="A backup solution protects your data from loss.\n"
+        backup_info+="You can always set one up after installation too.\n\n"
+        backup_info+="• Timeshift - Easy system snapshot tool (like System Restore)\n"
+        backup_info+="  Works with ext4 (rsync) and Btrfs. Has a friendly GUI.\n\n"
+        backup_info+="• Snapper - Automatic snapshots, best with Btrfs filesystem\n\n"
+        backup_info+="• Restic / Borg / rsnapshot - Command-line backup tools\n\n"
+        backup_info+="💡 TIP: Timeshift is great for beginners. Choose 'None' to decide later."
+        wt_msgbox "Backup Solution" "$backup_info" 20 72 || true
+    fi
+
+    local snapper_note=""
+    if [[ "$INSTALL_FILESYSTEM" != "btrfs" ]]; then
+        snapper_note=" (limited ext4 support - manual config needed)"
+    fi
+
+    local backup_choice
+    if [[ "$BEGINNER_MODE" == "true" ]]; then
+        backup_choice=$(wt_menu "Backup Solution" "Select a backup solution to install and configure:" 18 78 6 \
+            "none"      "None - Skip backup setup (configure later)" \
+            "timeshift" "Timeshift - Easy system snapshots ⭐ RECOMMENDED" \
+            "snapper"   "Snapper - Automatic Btrfs/ext4 snapshots${snapper_note}" \
+            "restic"    "Restic - Encrypted deduplicating backup" \
+            "borg"      "Borg + Borgmatic - Efficient encrypted backup" \
+            "rsnapshot" "rsnapshot - Simple incremental backups (rsync)")
+    else
+        backup_choice=$(wt_menu "Backup Solution" "Select a backup solution to install and configure:" 18 75 6 \
+            "none"      "none - Skip backup setup" \
+            "timeshift" "Timeshift - System snapshot tool (rsync/Btrfs)" \
+            "snapper"   "Snapper - Btrfs/ext4 snapshots + pacman hooks${snapper_note}" \
+            "restic"    "Restic - Encrypted backup with deduplication" \
+            "borg"      "Borg + Borgmatic - Deduplicating encrypted backup" \
+            "rsnapshot" "rsnapshot - Incremental backups via rsync + hard links")
+    fi
+    INSTALL_BACKUP_SOLUTION="${backup_choice:-none}"
+}
+
 show_installation_summary() {
     local summary=""
     
@@ -1289,7 +1421,13 @@ show_installation_summary() {
     else
         summary+="Bundles: none\n"
     fi
-    summary+="AUR Helper: ${INSTALL_AUR_HELPER}\n\n"
+    summary+="AUR Helper: ${INSTALL_AUR_HELPER}\n"
+    local perf_extras=""
+    is_true "$INSTALL_ZRAM"       && perf_extras+=", Zram"
+    is_true "$INSTALL_IRQBALANCE" && perf_extras+=", irqbalance"
+    is_true "$INSTALL_THERMALD"   && perf_extras+=", thermald"
+    summary+="Performance: CPU=${INSTALL_CPU_GOVERNOR}, I/O=${INSTALL_IO_SCHEDULER}, Swappiness=${INSTALL_SWAPPINESS}${perf_extras}\n"
+    summary+="Backup: ${INSTALL_BACKUP_SOLUTION}\n\n"
     
     if [[ "$BEGINNER_MODE" == "true" ]]; then
         summary+="⏱️ Estimated time: 15-30 minutes\n"
@@ -1717,6 +1855,21 @@ install_base_system() {
     fi
     
     packages+=(nano vim git sudo)
+
+    # Add performance tuning packages based on user selections
+    [[ "$INSTALL_CPU_GOVERNOR" != "skip" ]] && packages+=(cpupower)
+    is_true "$INSTALL_ZRAM"       && packages+=(zram-generator)
+    is_true "$INSTALL_IRQBALANCE" && packages+=(irqbalance)
+    is_true "$INSTALL_THERMALD"   && packages+=(thermald)
+
+    # Add backup solution packages
+    case "$INSTALL_BACKUP_SOLUTION" in
+        timeshift) packages+=(timeshift cronie) ;;
+        snapper)   packages+=(snapper snap-pac) ;;
+        restic)    packages+=(restic) ;;
+        borg)      packages+=(borg borgmatic) ;;
+        rsnapshot) packages+=(rsnapshot) ;;
+    esac
     
     # Add desktop environment packages if selected
     if [[ $INSTALL_DESKTOP_CHOICE != "none" ]]; then
@@ -1966,27 +2119,12 @@ configure_bundles() {
                 ;;
             optimization)
                 # Configure optimization settings
-                # Pacman config
+                # Pacman config enhancements (parallel downloads, color, verbose, ILoveCandy)
                 arch-chroot /mnt sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 5/' /etc/pacman.conf || true
                 arch-chroot /mnt sed -i 's/^#Color/Color/' /etc/pacman.conf || true
                 arch-chroot /mnt sed -i 's/^#VerbosePkgLists/VerbosePkgLists/' /etc/pacman.conf || true
-                
-                # Swappiness
-                arch-chroot /mnt bash -c 'mkdir -p /etc/sysctl.d && echo "vm.swappiness=10" > /etc/sysctl.d/99-swappiness.conf'
-                
-                # zram configuration
-                cat > /mnt/etc/systemd/zram-generator.conf <<'EOF'
-[zram0]
-zram-size = ram / 2
-compression-algorithm = zstd
-swap-priority = 100
-fs-type = swap
-EOF
-                
-                # Enable services
-                arch-chroot /mnt systemctl enable fstrim.timer >/dev/null 2>&1 || true
-                arch-chroot /mnt systemctl enable irqbalance.service >/dev/null 2>&1 || true
-                
+                arch-chroot /mnt bash -c "grep -q 'ILoveCandy' /etc/pacman.conf || sed -i '/^VerbosePkgLists/a ILoveCandy' /etc/pacman.conf" || true
+
                 # Enable TLP if laptop mode is enabled
                 if [[ "$INSTALL_LAPTOP_MODE" == "true" ]]; then
                     log_info "Enabling TLP for laptop power management"
@@ -2060,6 +2198,126 @@ install_aur_helper() {
     
     # Clean up the copied script
     rm -f "/mnt${target_path}"
+}
+
+configure_performance_tuning() {
+    log_step "Applying performance tuning settings"
+
+    # CPU Governor via cpupower
+    if [[ "$INSTALL_CPU_GOVERNOR" != "skip" ]]; then
+        log_info "Setting CPU governor: ${INSTALL_CPU_GOVERNOR}"
+        printf "governor='%s'\n" "${INSTALL_CPU_GOVERNOR}" > /mnt/etc/default/cpupower
+        arch-chroot /mnt systemctl enable cpupower.service >/dev/null 2>&1 || true
+    fi
+
+    # I/O Scheduler via udev rules
+    if [[ "$INSTALL_IO_SCHEDULER" != "skip" ]]; then
+        log_info "Setting I/O scheduler: ${INSTALL_IO_SCHEDULER}"
+        mkdir -p /mnt/etc/udev/rules.d
+        cat > /mnt/etc/udev/rules.d/60-ioschedulers.rules <<EOF
+# Set ${INSTALL_IO_SCHEDULER} scheduler for NVMe and SSDs
+ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="${INSTALL_IO_SCHEDULER}"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="${INSTALL_IO_SCHEDULER}"
+# Set BFQ for HDDs
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+EOF
+    fi
+
+    # Swappiness
+    log_info "Setting vm.swappiness=${INSTALL_SWAPPINESS}"
+    arch-chroot /mnt bash -c "mkdir -p /etc/sysctl.d && printf 'vm.swappiness=%s\n' '${INSTALL_SWAPPINESS}' > /etc/sysctl.d/99-swappiness.conf"
+
+    # Zram compressed swap
+    if is_true "$INSTALL_ZRAM"; then
+        log_info "Configuring zram compressed swap"
+        cat > /mnt/etc/systemd/zram-generator.conf <<'EOF'
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+swap-priority = 100
+fs-type = swap
+EOF
+    fi
+
+    # SSD TRIM (always beneficial for SSD/NVMe users)
+    arch-chroot /mnt systemctl enable fstrim.timer >/dev/null 2>&1 || true
+
+    # irqbalance - distribute hardware interrupts across CPU cores
+    if is_true "$INSTALL_IRQBALANCE"; then
+        log_info "Enabling irqbalance"
+        arch-chroot /mnt systemctl enable irqbalance.service >/dev/null 2>&1 || true
+    fi
+
+    # thermald - Intel thermal management
+    if is_true "$INSTALL_THERMALD"; then
+        log_info "Enabling thermald"
+        arch-chroot /mnt systemctl enable thermald.service >/dev/null 2>&1 || true
+    fi
+}
+
+configure_backup_solution() {
+    [[ "$INSTALL_BACKUP_SOLUTION" == "none" ]] && return
+
+    log_step "Configuring backup solution: ${INSTALL_BACKUP_SOLUTION}"
+
+    case "$INSTALL_BACKUP_SOLUTION" in
+        timeshift)
+            # Enable cronie for scheduled Timeshift snapshots
+            arch-chroot /mnt systemctl enable cronie.service >/dev/null 2>&1 || true
+            log_info "Timeshift installed - run 'timeshift-gtk' (GUI) or 'timeshift --help' after first boot"
+            ;;
+        snapper)
+            if [[ "$INSTALL_FILESYSTEM" == "btrfs" ]]; then
+                # Create snapper config for root
+                # If @snapshots subvolume was set up, /.snapshots is already a mount point
+                # and snapper's create-config must not recreate it - pass --no-dbus flag
+                arch-chroot /mnt bash -c "
+                    if mountpoint -q /.snapshots 2>/dev/null; then
+                        # .snapshots is a separate subvolume mount; create config without recreating the dir
+                        snapper --no-dbus -c root create-config / >/dev/null 2>&1 || true
+                    else
+                        snapper -c root create-config / >/dev/null 2>&1 || true
+                    fi
+                "
+                # Enable automatic snapshot timers
+                arch-chroot /mnt systemctl enable snapper-timeline.timer >/dev/null 2>&1 || true
+                arch-chroot /mnt systemctl enable snapper-cleanup.timer >/dev/null 2>&1 || true
+                log_info "Snapper configured for Btrfs root with automatic timeline snapshots"
+                log_info "snap-pac will create pre/post snapshots on pacman operations"
+            else
+                # Snapper has limited ext4 support; notify the user to configure manually
+                log_info "Snapper installed (ext4 support is limited - manual configuration required)"
+                log_info "Run 'snapper -c root create-config /' after first boot to configure"
+            fi
+            ;;
+        restic)
+            log_info "Restic installed - initialize a repository after first boot"
+            log_info "Example: restic -r /mnt/backup init && restic -r /mnt/backup backup /home"
+            ;;
+        borg)
+            # Create a sample borgmatic configuration using direct file write
+            arch-chroot /mnt mkdir -p /etc/borgmatic.d
+            cat > /mnt/etc/borgmatic.d/config.yaml <<'EOF'
+location:
+    source_directories:
+        - /home
+        - /etc
+    repositories:
+        - /backup/borg
+retention:
+    keep_daily: 7
+    keep_weekly: 4
+    keep_monthly: 6
+EOF
+            log_info "Borg + Borgmatic installed with sample config at /etc/borgmatic.d/config.yaml"
+            log_info "Initialize a repo with: borg init --encryption=repokey /backup/borg"
+            ;;
+        rsnapshot)
+            # Set a sensible snapshot root - handle both tab and space separators in rsnapshot.conf
+            arch-chroot /mnt bash -c "sed -i 's|^snapshot_root[[:space:]].*|snapshot_root\t/backup/rsnapshot/|' /etc/rsnapshot.conf" >/dev/null 2>&1 || true
+            log_info "rsnapshot installed - customize /etc/rsnapshot.conf then test with: rsnapshot configtest"
+            ;;
+    esac
 }
 
 perform_cleanup() {
@@ -2139,6 +2397,8 @@ main() {
     select_desktop
     select_bundles
     select_aur_helper
+    select_performance_tuning
+    select_backup_solution
     
     # Finalize boot configuration
     BOOT_MODE=$(resolve_boot_mode "$DETECTED_BOOT_MODE")
@@ -2230,8 +2490,14 @@ main() {
         echo "Setting up timezone, locale, hostname, and users"
         echo "XXX"
         configure_system
-        
+
         echo "79" ; echo "XXX"
+        echo "Applying performance tuning..."
+        echo "CPU governor, I/O scheduler, swappiness, zram"
+        echo "XXX"
+        configure_performance_tuning
+
+        echo "81" ; echo "XXX"
         echo "Creating swapfile..."
         echo "Setting up swap space for memory management"
         echo "XXX"
@@ -2257,6 +2523,14 @@ main() {
             echo "Setting up ${#INSTALL_BUNDLE_CHOICES[@]} bundle service(s)"
             echo "XXX"
             configure_bundles
+        fi
+
+        if [[ $INSTALL_BACKUP_SOLUTION != "none" ]]; then
+            echo "93" ; echo "XXX"
+            echo "Configuring backup solution..."
+            echo "Setting up ${INSTALL_BACKUP_SOLUTION} backup"
+            echo "XXX"
+            configure_backup_solution
         fi
         
         if [[ $INSTALL_AUR_HELPER != "none" ]]; then

@@ -57,12 +57,24 @@ The installer uses a gum-based TUI to provide a friendly, text-based installatio
 13. **Desktop Environment** - Choose from 10 desktop options or minimal install
 14. **Software Bundles** - Select optional bundles (dev tools, gaming, server, cloud, creative, utilities, optimization, security, networking, sysadmin)
 15. **AUR Helper** - Choose AUR helper (yay, paru, or none) for accessing community packages
-16. **Installation Summary** - Review all settings before proceeding
-17. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
+16. **Performance Tuning** - Configure system performance options:
+    - CPU governor selection (schedutil/performance/powersave/skip)
+    - I/O scheduler selection (mq-deadline/bfq/kyber/skip)
+    - Swappiness value (0-100)
+    - Zram compressed swap, irqbalance, and thermald (Intel) options
+17. **Backup Solution** - Choose and configure a backup solution:
+    - Timeshift (system snapshots, GUI included)
+    - Snapper (automatic Btrfs/ext4 snapshots with pacman hooks via snap-pac)
+    - Restic (encrypted deduplicating backup)
+    - Borg + Borgmatic (efficient encrypted backup with sample config)
+    - rsnapshot (incremental backups via rsync)
+    - None (configure later)
+18. **Installation Summary** - Review all settings before proceeding
+19. **Automated Installation** - Enhanced progress bars show installation stages with detailed feedback
     - All selected packages (base, desktop, bundles) installed together in one efficient operation
     - Post-installation configuration for services and settings
     - AUR helper installation (if selected)
-18. **Completion** - Success message with next steps
+20. **Completion** - Success message with next steps
 
 All user interaction happens through gum TUI menus with progress indicators, making the installation process intuitive and providing clear feedback on progress.
 
