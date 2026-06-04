@@ -75,6 +75,27 @@ arch-install/
 ### Phase 2: Calamares graphical installer
 ### Phase 3: ISO CI + GitHub Actions release
 
+
+## Kernel Compilation (Advanced, Opt-In)
+This is not a beginner path. Only expose it under an explicit advanced mode.
+
+### Trigger
+- Text installer: advanced menu -> Compile custom kernel
+- Calamares: hidden checkbox or advanced profile -> Custom kernel
+
+### Behavior
+- Use kernel sources from Arch packages + local source extraction
+- Ask for localversion suffix, e.g. `-kyber`
+- Require base-devel toolchain already in target
+- Run inside arch-chroot only after base install
+- Keep it idempotent: detect existing custom kernel and offer rebuild/remove
+
+### Guardrails
+- Show clear warnings: time cost, CPU/RAM impact, possible boot failure
+- Block if base system not installed yet
+- Validate build dependencies before starting
+- Do not make this default or beginner-visible
+
 ## Success Criteria
 - Bootable ISO under 1.5 GB.
 - Desktop to login screen in under 15 minutes.
